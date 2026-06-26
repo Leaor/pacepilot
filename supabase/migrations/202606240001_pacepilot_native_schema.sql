@@ -135,6 +135,15 @@ create table if not exists public.strava_connections (
   disconnected_at timestamptz
 );
 
+create table if not exists public.strava_activity_cache (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  strava_activity_id text not null,
+  payload jsonb not null,
+  cached_at timestamptz not null default now(),
+  unique (user_id, strava_activity_id)
+);
+
 create table if not exists public.garmin_connections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -449,6 +458,7 @@ begin
     'workouts',
     'activities',
     'strava_connections',
+    'strava_activity_cache',
     'garmin_connections',
     'plan_events',
     'checkins',
