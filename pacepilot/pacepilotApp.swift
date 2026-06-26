@@ -1,17 +1,16 @@
-//
-//  pacepilotApp.swift
-//  pacepilot
-//
-//  Created by Michael on 2026-06-23.
-//
-
 import SwiftUI
 
 @main
-struct pacepilotApp: App {
+struct PacePilotApp: App {
+    @StateObject private var appState = AppState()
+    private let environment = AppEnvironment.development
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(appState)
+                .environment(\.appEnvironment, environment)
+                .preferredColorScheme(.dark)
         }
     }
 }

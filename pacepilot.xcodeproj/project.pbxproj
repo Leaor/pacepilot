@@ -6,20 +6,50 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B20000012FEA000000000001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = B20000052FEA000000000005 /* Supabase */; };
+		B20000022FEA000000000002 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = B20000062FEA000000000006 /* RevenueCat */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000072FEA000000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C682EF62FEA4B9B00209821 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C682EFD2FEA4B9B00209821;
+			remoteInfo = PacePilot;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		4C682EFE2FEA4B9B00209821 /* pacepilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pacepilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C682EFE2FEA4B9B00209821 /* PacePilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PacePilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000012FEA000000000001 /* PacePilotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PacePilotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4C682F002FEA4B9B00209821 /* pacepilot */ = {
+		4C682F002FEA4B9B00209821 /* PacePilot */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = pacepilot;
+			path = PacePilot;
+			sourceTree = "<group>";
+		};
+		A10000022FEA000000000002 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		4C682EFB2FEA4B9B00209821 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B20000012FEA000000000001 /* Supabase in Frameworks */,
+				B20000022FEA000000000002 /* RevenueCat in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000042FEA000000000004 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -32,7 +62,8 @@
 		4C682EF52FEA4B9B00209821 = {
 			isa = PBXGroup;
 			children = (
-				4C682F002FEA4B9B00209821 /* pacepilot */,
+				4C682F002FEA4B9B00209821 /* PacePilot */,
+				A10000022FEA000000000002 /* Tests */,
 				4C682EFF2FEA4B9B00209821 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -40,7 +71,8 @@
 		4C682EFF2FEA4B9B00209821 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4C682EFE2FEA4B9B00209821 /* pacepilot.app */,
+				4C682EFE2FEA4B9B00209821 /* PacePilot.app */,
+				A10000012FEA000000000001 /* PacePilotTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +80,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4C682EFD2FEA4B9B00209821 /* pacepilot */ = {
+		4C682EFD2FEA4B9B00209821 /* PacePilot */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4C682F092FEA4B9C00209821 /* Build configuration list for PBXNativeTarget "pacepilot" */;
+			buildConfigurationList = 4C682F092FEA4B9C00209821 /* Build configuration list for PBXNativeTarget "PacePilot" */;
 			buildPhases = (
 				4C682EFA2FEA4B9B00209821 /* Sources */,
 				4C682EFB2FEA4B9B00209821 /* Frameworks */,
@@ -61,14 +93,39 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4C682F002FEA4B9B00209821 /* pacepilot */,
+				4C682F002FEA4B9B00209821 /* PacePilot */,
 			);
-			name = pacepilot;
+			name = PacePilot;
+			packageProductDependencies = (
+				B20000052FEA000000000005 /* Supabase */,
+				B20000062FEA000000000006 /* RevenueCat */,
+			);
+			productName = PacePilot;
+			productReference = 4C682EFE2FEA4B9B00209821 /* PacePilot.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A10000062FEA000000000006 /* PacePilotTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A100000B2FEA00000000000B /* Build configuration list for PBXNativeTarget "PacePilotTests" */;
+			buildPhases = (
+				A10000032FEA000000000003 /* Sources */,
+				A10000042FEA000000000004 /* Frameworks */,
+				A10000052FEA000000000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000082FEA000000000008 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A10000022FEA000000000002 /* Tests */,
+			);
+			name = PacePilotTests;
 			packageProductDependencies = (
 			);
-			productName = pacepilot;
-			productReference = 4C682EFE2FEA4B9B00209821 /* pacepilot.app */;
-			productType = "com.apple.product-type.application";
+			productName = PacePilotTests;
+			productReference = A10000012FEA000000000001 /* PacePilotTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -83,6 +140,10 @@
 					4C682EFD2FEA4B9B00209821 = {
 						CreatedOnToolsVersion = 26.5;
 					};
+					A10000062FEA000000000006 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 4C682EFD2FEA4B9B00209821;
+					};
 				};
 			};
 			buildConfigurationList = 4C682EF92FEA4B9B00209821 /* Build configuration list for PBXProject "pacepilot" */;
@@ -94,18 +155,30 @@
 			);
 			mainGroup = 4C682EF52FEA4B9B00209821;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B20000032FEA000000000003 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				B20000042FEA000000000004 /* XCRemoteSwiftPackageReference "purchases-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4C682EFF2FEA4B9B00209821 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4C682EFD2FEA4B9B00209821 /* pacepilot */,
+				4C682EFD2FEA4B9B00209821 /* PacePilot */,
+				A10000062FEA000000000006 /* PacePilotTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		4C682EFC2FEA4B9B00209821 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000052FEA000000000005 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +195,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000032FEA000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A10000082FEA000000000008 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C682EFD2FEA4B9B00209821 /* PacePilot */;
+			targetProxy = A10000072FEA000000000007 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		4C682F072FEA4B9C00209821 /* Debug */ = {
@@ -178,7 +266,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -236,7 +324,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -253,9 +341,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = BL9RR7UBY4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = PacePilot;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "PacePilot can read approved HealthKit workout data only with your permission.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PacePilot uses GPS to record your PacePilot workouts.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -267,7 +359,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.app.pacepilot;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = PacePilot;
+				PRODUCT_NAME = PacePilot;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -285,9 +378,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = BL9RR7UBY4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = PacePilot;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "PacePilot can read approved HealthKit workout data only with your permission.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PacePilot uses GPS to record your PacePilot workouts.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -299,7 +396,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.app.pacepilot;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = PacePilot;
+				PRODUCT_NAME = PacePilot;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -307,6 +405,58 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A10000092FEA000000000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BL9RR7UBY4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.app.pacepilot.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PacePilot.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PacePilot";
+				TEST_TARGET_NAME = PacePilot;
+			};
+			name = Debug;
+		};
+		A100000A2FEA00000000000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BL9RR7UBY4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.app.pacepilot.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PacePilot.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PacePilot";
+				TEST_TARGET_NAME = PacePilot;
 			};
 			name = Release;
 		};
@@ -322,7 +472,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4C682F092FEA4B9C00209821 /* Build configuration list for PBXNativeTarget "pacepilot" */ = {
+		4C682F092FEA4B9C00209821 /* Build configuration list for PBXNativeTarget "PacePilot" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4C682F0A2FEA4B9C00209821 /* Debug */,
@@ -331,7 +481,48 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A100000B2FEA00000000000B /* Build configuration list for PBXNativeTarget "PacePilotTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000092FEA000000000009 /* Debug */,
+				A100000A2FEA00000000000A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B20000032FEA000000000003 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+		B20000042FEA000000000004 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B20000052FEA000000000005 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B20000032FEA000000000003 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		B20000062FEA000000000006 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B20000042FEA000000000004 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4C682EF62FEA4B9B00209821 /* Project object */;
 }

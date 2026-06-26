@@ -1,0 +1,43 @@
+{
+  "name": "pacepilot",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "latest",
+    "@react-native-async-storage/async-storage": "latest",
+    "@supabase/supabase-js": "latest",
+    "expo": "latest",
+    "expo-constants": "latest",
+    "expo-linking": "latest",
+    "expo-router": "latest",
+    "expo-secure-store": "latest",
+    "expo-status-bar": "latest",
+    "lucide-react-native": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-native": "latest",
+    "react-native-safe-area-context": "latest",
+    "react-native-screens": "latest",
+    "react-native-svg": "latest",
+    "react-native-url-polyfill": "latest",
+    "react-native-web": "^0.21.2"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

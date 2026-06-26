@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "PacePilot",
+    "slug": "pacepilot",
+    "scheme": "pacepilot",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.pacepilot.mobile"
+    },
+    "android": {
+      "package": "app.pacepilot.mobile"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "supabaseUrl": "$EXPO_PUBLIC_SUPABASE_URL",
+      "supabaseAnonKey": "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
+    }
+  }
+}
