@@ -29,6 +29,7 @@ const exportTables = [
   { key: "ai_usage_logs", table: "ai_usage_logs", userColumn: "user_id", optional: true },
   { key: "ai_data_access_logs", table: "ai_data_access_logs", userColumn: "user_id", optional: true },
   { key: "strava_connections", table: "strava_connections", userColumn: "user_id", redactTokens: true, optional: true },
+  { key: "strava_activity_cache", table: "strava_activity_cache", userColumn: "user_id", optional: true },
   { key: "garmin_connections", table: "garmin_connections", userColumn: "user_id", redactTokens: true, optional: true },
   { key: "connected_service_audit_logs", table: "connected_service_audit_logs", userColumn: "user_id", optional: true },
   { key: "user_data_export_requests", table: "user_data_export_requests", userColumn: "user_id", optional: true },

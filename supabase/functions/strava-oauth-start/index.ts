@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     url.searchParams.set("redirect_uri", redirectUri);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("approval_prompt", "auto");
-    url.searchParams.set("scope", "read,activity:read");
+    url.searchParams.set("scope", Deno.env.get("STRAVA_OAUTH_SCOPE") ?? "read,activity:read,activity:write");
     url.searchParams.set("state", await createOAuthState(user.id));
 
     return jsonResponse({ authorizationUrl: url.toString() });

@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, getServiceClient } from "../_shared/auth.ts";
 import { handleOptions, jsonResponse, methodNotAllowed, readJsonBody, safeErrorResponse } from "../_shared/cors.ts";
+import { writeAdminAuditLog } from "../_shared/audit.ts";
 
 type ImportRow = {
   name: string;
@@ -225,10 +226,10 @@ Deno.serve(async (req) => {
     const rows = parseRows(body.csv ?? "");
     await insertRows(supabase, rows);
 
-    await supabase.from("admin_audit_logs").insert({
-      admin_user_id: user.id,
+    await writeAdminAuditLog(supabase, {
+      adminUserId: user.id,
       action: "events_csv_import",
-      target_table: "events",
+      targetTable: "events",
       metadata: { imported: rows.length }
     });
 

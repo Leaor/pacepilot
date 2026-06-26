@@ -2,6 +2,7 @@ import { getServiceClient } from "../_shared/auth.ts";
 import { handleOptions, jsonResponse, methodNotAllowed, safeErrorResponse } from "../_shared/cors.ts";
 import { encryptSecret } from "../_shared/encryption.ts";
 import { verifyOAuthState } from "../_shared/oauthState.ts";
+import { writeConnectedServiceAuditLog } from "../_shared/audit.ts";
 
 Deno.serve(async (req) => {
   const optionsResponse = handleOptions(req);
@@ -49,8 +50,8 @@ Deno.serve(async (req) => {
       expires_at: new Date(Number(tokenPayload.expires_at) * 1000).toISOString()
     });
 
-    await supabase.from("connected_service_audit_logs").insert({
-      user_id: state.sub,
+    await writeConnectedServiceAuditLog(supabase, {
+      userId: state.sub,
       service: "strava",
       action: "connected",
       metadata: {

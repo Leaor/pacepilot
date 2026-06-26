@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, getServiceClient } from "../_shared/auth.ts";
 import { handleOptions, jsonResponse, methodNotAllowed, safeErrorResponse } from "../_shared/cors.ts";
+import { writeConnectedServiceAuditLog } from "../_shared/audit.ts";
 
 function isMissingRelation(error: { code?: string; message?: string }): boolean {
   return error.code === "42P01" || /does not exist|schema cache/i.test(error.message ?? "");
@@ -44,8 +45,8 @@ Deno.serve(async (req) => {
       throw result.error;
     }
 
-    await supabase.from("connected_service_audit_logs").insert({
-      user_id: user.id,
+    await writeConnectedServiceAuditLog(supabase, {
+      userId: user.id,
       service: "account",
       action: "deletion_requested",
       metadata: {}
