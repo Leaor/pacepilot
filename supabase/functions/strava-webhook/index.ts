@@ -1,16 +1,7 @@
 import { getServiceClient } from "../_shared/auth.ts";
 import { handleOptions, jsonResponse, methodNotAllowed, readJsonBody, safeErrorResponse, HttpError } from "../_shared/cors.ts";
 import { writeConnectedServiceAuditLog } from "../_shared/audit.ts";
-
-type StravaWebhookEvent = {
-  object_type?: string;
-  object_id?: number | string;
-  aspect_type?: "create" | "update" | "delete";
-  owner_id?: number | string;
-  subscription_id?: number | string;
-  event_time?: number;
-  updates?: Record<string, unknown>;
-};
+import { assertExpectedStravaSubscription, type StravaWebhookEvent } from "../_shared/stravaWebhook.ts";
 
 type StravaConnectionRow = {
   user_id: string;
@@ -77,17 +68,18 @@ Deno.serve(async (req) => {
         throw new HttpError("Webhook verification failed", 403);
       }
 
-      return jsonResponse({ "hub.challenge": challenge });
+      return jsonResponse({ "hub.challenge": challenge }, 200, req);
     }
 
     if (req.method !== "POST") {
-      return methodNotAllowed();
+      return methodNotAllowed(req);
     }
 
     const event = await readJsonBody<StravaWebhookEvent>(req, 16_000);
     if (!event.object_type || !event.object_id || !event.aspect_type || !event.owner_id) {
       throw new HttpError("Invalid Strava webhook event", 400);
     }
+    assertExpectedStravaSubscription(event);
 
     const supabase = getServiceClient();
     const connections = await supabase
@@ -122,8 +114,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    return jsonResponse({ received: true });
+    return jsonResponse({ received: true }, 200, req);
   } catch (error) {
-    return safeErrorResponse(error, "Strava webhook failed");
+    return safeErrorResponse(error, "Strava webhook failed", req);
   }
 });

@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return methodNotAllowed();
+    return methodNotAllowed(req);
   }
 
   try {
@@ -22,8 +22,8 @@ Deno.serve(async (req) => {
       refreshed: true,
       athleteId: token.athleteId,
       expiresAt: token.expiresAt
-    });
+    }, 200, req);
   } catch (error) {
-    return safeErrorResponse(error, "Strava token refresh failed");
+    return safeErrorResponse(error, "Strava token refresh failed", req);
   }
 });

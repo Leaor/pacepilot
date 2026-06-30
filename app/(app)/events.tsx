@@ -1,5 +1,6 @@
 import { Link } from "expo-router";
 import { Flag, MapPinned, Search } from "lucide-react-native";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { ActionButton } from "@/components/ActionButton";
 import { Card } from "@/components/Card";
@@ -51,6 +52,9 @@ const events: RaceEvent[] = [
 export default function EventsScreen() {
   const featured = filterEvents(events, { featuredOnly: true });
   const selectedEvent = featured[0];
+  const [planEventId, setPlanEventId] = useState(selectedEvent.id);
+  const [aRaceId, setARaceId] = useState(selectedEvent.id);
+  const [bRaceId, setBRaceId] = useState<string | null>(null);
   const strategy = buildRaceStrategy({
     distanceKm: selectedEvent.distanceKm,
     goalTimeSeconds: 3 * 60 * 60 + 45 * 60,
@@ -60,7 +64,7 @@ export default function EventsScreen() {
 
   return (
     <Screen>
-      <SectionHeader title="Explore featured races" caption="Seeded events only for MVP. No scraping protected race sources." />
+      <SectionHeader title="Explore featured races" caption="Curated race discovery with protected-source boundaries." />
       <Card accent="cyan">
         <View style={styles.searchBar}>
           <Search color={colors.textMuted} size={18} />
@@ -75,16 +79,18 @@ export default function EventsScreen() {
       </Card>
 
       {featured.map((event) => (
-        <Card key={event.id} accent={event.id === selectedEvent.id ? "orange" : "cyan"}>
+        <Card key={event.id} accent={event.id === planEventId ? "orange" : "cyan"}>
           <View style={styles.headerRow}>
             <View style={styles.copy}>
               <Text variant="subheading">{event.name}</Text>
               <Text muted>{`${event.city}, ${event.country} · ${event.date}`}</Text>
             </View>
-            <MapPinned color={event.id === selectedEvent.id ? colors.orange : colors.cyan} size={22} />
+            <MapPinned color={event.id === planEventId ? colors.orange : colors.cyan} size={22} />
           </View>
           <View style={styles.tags}>
             <Pill label={`${event.distanceKm} km`} />
+            {aRaceId === event.id ? <Pill label="A-race" tone="orange" /> : null}
+            {bRaceId === event.id ? <Pill label="B-race" tone="cyan" /> : null}
             {event.terrainTags.map((tag) => (
               <Pill key={tag} label={tag} tone="green" />
             ))}
@@ -93,9 +99,9 @@ export default function EventsScreen() {
             ))}
           </View>
           <View style={styles.buttonRow}>
-            <ActionButton label="Create plan" variant={event.id === selectedEvent.id ? "primary" : "secondary"} />
-            <ActionButton label="+A" variant="secondary" />
-            <ActionButton label="+B" variant="secondary" />
+            <ActionButton label="Create plan" variant={event.id === planEventId ? "primary" : "secondary"} onPress={() => setPlanEventId(event.id)} />
+            <ActionButton label="+A" variant="secondary" onPress={() => setARaceId(event.id)} />
+            <ActionButton label="+B" variant="secondary" onPress={() => setBRaceId(event.id)} />
           </View>
         </Card>
       ))}
@@ -105,7 +111,7 @@ export default function EventsScreen() {
           <Text variant="subheading">Race tools</Text>
           <Flag color={colors.purple} size={22} />
         </View>
-        <Text muted>{`${strategy.splits.length} split race strategy, warm-up, fueling, hydration, and backup plan are generated deterministically for MVP.`}</Text>
+        <Text muted>{`${strategy.splits.length} split race strategy, warm-up, fueling, hydration, and backup plan are ready for review.`}</Text>
         <Text muted>{`${checklist.length} race-weekend checklist items are ready for ${selectedEvent.name}.`}</Text>
         <Link href="/paywall" style={styles.link}>
           View Elite race tools

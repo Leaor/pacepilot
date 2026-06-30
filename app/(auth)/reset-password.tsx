@@ -7,32 +7,39 @@ import { Screen } from "@/components/Screen";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Text } from "@/components/Text";
 import { useAuth } from "@/auth/AuthContext";
+import { authSuccessMessage } from "@/auth/validation";
 import { colors, spacing } from "@/lib/theme";
 
 export default function ResetPasswordScreen() {
   const { resetPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleReset() {
-    setMessage((await resetPassword(email)) ?? "Password reset email requested.");
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setMessage((await resetPassword(email)) ?? authSuccessMessage("resetPassword"));
+    setIsSubmitting(false);
   }
 
   return (
     <Screen>
-      <SectionHeader title="Reset Password" caption="Request a secure reset link through Supabase Auth." />
+      <SectionHeader title="Reset Password" caption="Request a secure account reset link." />
       <Card>
         <TextInput
           autoCapitalize="none"
           autoComplete="email"
+          autoCorrect={false}
           keyboardType="email-address"
           onChangeText={setEmail}
           placeholder="Email"
           placeholderTextColor={colors.textMuted}
           style={styles.input}
+          textContentType="emailAddress"
           value={email}
         />
-        <ActionButton label="Send reset link" onPress={handleReset} />
+        <ActionButton label={isSubmitting ? "Sending..." : "Send reset link"} onPress={handleReset} disabled={isSubmitting} />
         {message ? <Text muted>{message}</Text> : null}
         <Link href="/sign-in" style={styles.link}>
           Back to sign in

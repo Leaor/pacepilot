@@ -1,4 +1,120 @@
+import Foundation
 import SwiftUI
+
+struct PrivacyActionResult: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var message: String
+}
+
+private struct EdgeErrorResponse: Decodable {
+    var error: String
+}
+
+private enum AccountDataServiceError: LocalizedError {
+    case missingSupabaseConfiguration
+    case invalidURL
+    case invalidResponse
+    case edgeFunction(String)
+    case unableToSaveExport
+
+    var errorDescription: String? {
+        switch self {
+        case .missingSupabaseConfiguration:
+            "Add Supabase URL and anon key configuration before using account data requests."
+        case .invalidURL:
+            "The configured Supabase URL is invalid."
+        case .invalidResponse:
+            "The account data request returned an unreadable response."
+        case .edgeFunction(let message):
+            message
+        case .unableToSaveExport:
+            "PacePilot could not save the export file on this device."
+        }
+    }
+}
+
+private struct AccountDataService {
+    var environment: AppEnvironment
+    var supabase: SupabaseService
+
+    func exportFullAccountData() async -> PrivacyActionResult {
+        do {
+            let data = try await callEdgeFunction("export-user-data", method: "GET")
+            let fileURL = try writePrivacyExportData(data, prefix: "pacepilot-data-export")
+            return PrivacyActionResult(
+                title: "Export ready",
+                message: "Saved \(fileURL.lastPathComponent) in the PacePilot documents folder."
+            )
+        } catch {
+            return PrivacyActionResult(title: "Export unavailable", message: error.localizedDescription)
+        }
+    }
+
+    func requestAccountDeletion() async -> PrivacyActionResult {
+        do {
+            _ = try await callEdgeFunction("delete-account-request", method: "POST")
+            return PrivacyActionResult(
+                title: "Deletion requested",
+                message: "Your account deletion request was recorded for review and processing."
+            )
+        } catch {
+            return PrivacyActionResult(title: "Deletion request unavailable", message: error.localizedDescription)
+        }
+    }
+
+    private func callEdgeFunction(_ name: String, method: String) async throws -> Data {
+        guard supabase.isConfigured() else {
+            throw AccountDataServiceError.missingSupabaseConfiguration
+        }
+        guard let url = supabase.configuration.edgeFunctionURL(named: name) else {
+            throw AccountDataServiceError.invalidURL
+        }
+
+        let accessToken = try await supabase.authenticatedAccessToken()
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue(supabase.configuration.normalizedAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AccountDataServiceError.invalidResponse
+        }
+
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            let message = (try? JSONDecoder().decode(EdgeErrorResponse.self, from: data).error)
+                ?? "Account data request returned \(httpResponse.statusCode)."
+            throw AccountDataServiceError.edgeFunction(message)
+        }
+
+        return data
+    }
+}
+
+private func writePrivacyExportData(_ data: Data, prefix: String) throws -> URL {
+    guard let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+        throw AccountDataServiceError.unableToSaveExport
+    }
+
+    let fileURL = directory.appendingPathComponent("\(prefix)-\(privacyExportTimestamp()).json")
+    try data.write(to: fileURL, options: .atomic)
+    return fileURL
+}
+
+private func writePrivacyExport<T: Encodable>(_ value: T, prefix: String) throws -> URL {
+    let encoder = JSONEncoder()
+    encoder.dateEncodingStrategy = .iso8601
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    let data = try encoder.encode(value)
+    return try writePrivacyExportData(data, prefix: prefix)
+}
+
+private func privacyExportTimestamp() -> String {
+    ISO8601DateFormatter()
+        .string(from: Date())
+        .replacingOccurrences(of: ":", with: "-")
+}
 
 struct PrivacyCenterView: View {
     var body: some View {
@@ -53,6 +169,7 @@ struct DataOverviewView: View {
 
 struct AIDataControlsView: View {
     @EnvironmentObject private var appState: AppState
+    @State private var actionResult: PrivacyActionResult?
 
     var body: some View {
         Form {
@@ -71,14 +188,36 @@ struct AIDataControlsView: View {
             Section {
                 Button("Clear AI chat history", role: .destructive) {
                     appState.aiThreads.removeAll()
+                    actionResult = PrivacyActionResult(title: "AI history cleared", message: "AI chat history was cleared on this device.")
                 }
-                Button("Export AI chat history") {}
+                Button("Export AI chat history") {
+                    exportAIChatHistory()
+                }
             }
         }
         .scrollContentBackground(.hidden)
         .background(PPColors.backgroundNavy)
         .ppTabSafeAreaPadding()
         .navigationTitle("AI Data Controls")
+        .alert(actionResult?.title ?? "AI Data", isPresented: Binding(get: { actionResult != nil }, set: { if !$0 { actionResult = nil } })) {
+            Button("OK") { actionResult = nil }
+        } message: {
+            Text(actionResult?.message ?? "")
+        }
+    }
+
+    private func exportAIChatHistory() {
+        guard !appState.aiThreads.isEmpty else {
+            actionResult = PrivacyActionResult(title: "No AI history", message: "There is no AI chat history to export on this device.")
+            return
+        }
+
+        do {
+            let fileURL = try writePrivacyExport(appState.aiThreads, prefix: "pacepilot-ai-chat-export")
+            actionResult = PrivacyActionResult(title: "AI export ready", message: "Saved \(fileURL.lastPathComponent) in the PacePilot documents folder.")
+        } catch {
+            actionResult = PrivacyActionResult(title: "AI export unavailable", message: error.localizedDescription)
+        }
     }
 }
 
@@ -93,25 +232,39 @@ struct ConnectedServicesDataView: View {
                 Text(StravaService().status(cachedActivities: appState.stravaActivities().count).message)
                 Button("Disconnect Strava") {
                     Task {
-                        stravaResult = await StravaService().disconnect(environment: environment)
+                        stravaResult = await StravaService().disconnect(environment: environment, supabase: supabaseService())
                     }
                 }
-                Button("Delete cached Strava data", role: .destructive) {
+                Button("Disconnect and clear Strava cache", role: .destructive) {
                     Task {
-                        let result = await StravaService().deleteCachedData(environment: environment)
-                        appState.deleteStravaCache()
+                        let result = await StravaService().disconnectAndDeleteCachedData(environment: environment, supabase: supabaseService())
+                        if result.succeeded {
+                            appState.deleteStravaCache()
+                        }
                         stravaResult = result
                     }
                 }
-                Text("Cache expiry is enforced by Edge Functions when Supabase is configured. Local display cache can be cleared immediately.")
+                Text("Clearing Strava cache also disconnects Strava access. Local display cache is cleared only after the server request succeeds.")
                     .foregroundStyle(PPColors.textMuted)
                 Label("Strava API/cache data is always excluded from PacePilot AI.", systemImage: "nosign")
                     .foregroundStyle(PPColors.warning)
             }
             Section("Garmin") {
-                Text(GarminService(featureEnabled: false, mockMode: true).status().message)
-                Button("Disconnect Garmin") {}
-                Button("Delete cached Garmin data", role: .destructive) {}
+                Text(GarminService(featureEnabled: environment.garminFeatureEnabled, mockMode: environment.mockGarmin).status().message)
+                Button("Disconnect Garmin") {
+                    stravaResult = StravaActionResult(
+                        title: "Garmin unavailable",
+                        message: GarminService(featureEnabled: environment.garminFeatureEnabled, mockMode: environment.mockGarmin).status().message,
+                        destinationURL: nil
+                    )
+                }
+                Button("Delete cached Garmin data", role: .destructive) {
+                    stravaResult = StravaActionResult(
+                        title: "Garmin cache unavailable",
+                        message: "Garmin cache controls will be enabled after partner approval and server-side sync support.",
+                        destinationURL: nil
+                    )
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -124,39 +277,101 @@ struct ConnectedServicesDataView: View {
             Text(stravaResult?.message ?? "")
         }
     }
+
+    private func supabaseService() -> SupabaseService {
+        SupabaseService(
+            configuration: SupabaseConfiguration(
+                url: environment.supabaseURL,
+                anonKey: environment.supabaseAnonKey
+            )
+        )
+    }
 }
 
 struct ExportMyDataView: View {
-    private let exports = ["Full data export", "Profile", "Activities", "Plans", "AI chats", "Race strategies", "Shoes", "Check-ins"]
+    @Environment(\.appEnvironment) private var environment
+    @State private var isExporting = false
+    @State private var actionResult: PrivacyActionResult?
+
+    private let includedCategories = ["Profile", "Privacy settings", "Subscriptions", "Training plans", "Workouts", "Activities", "Check-ins", "Race tools", "Shoes", "AI chats", "Connected-service metadata", "Export/deletion request logs"]
 
     var body: some View {
-        List(exports, id: \.self) { item in
-            Button("Request \(item)") {}
+        List {
+            Section("Full account export") {
+                Text("Create a JSON export of PacePilot-owned account data. Connected-service tokens are redacted before export.")
+                    .foregroundStyle(PPColors.textMuted)
+                Button(isExporting ? "Preparing export..." : "Create full account export") {
+                    requestExport()
+                }
+                .disabled(isExporting)
+            }
+            Section("Included data") {
+                ForEach(includedCategories, id: \.self) { item in
+                    Label(item, systemImage: "doc.text")
+                }
+            }
         }
         .scrollContentBackground(.hidden)
         .background(PPColors.backgroundNavy)
         .ppTabSafeAreaPadding()
         .navigationTitle("Export My Data")
+        .alert(actionResult?.title ?? "Export", isPresented: Binding(get: { actionResult != nil }, set: { if !$0 { actionResult = nil } })) {
+            Button("OK") { actionResult = nil }
+        } message: {
+            Text(actionResult?.message ?? "")
+        }
+    }
+
+    private func requestExport() {
+        guard !isExporting else { return }
+        isExporting = true
+
+        Task {
+            actionResult = await AccountDataService(environment: environment, supabase: supabaseService()).exportFullAccountData()
+            isExporting = false
+        }
+    }
+
+    private func supabaseService() -> SupabaseService {
+        SupabaseService(
+            configuration: SupabaseConfiguration(
+                url: environment.supabaseURL,
+                anonKey: environment.supabaseAnonKey
+            )
+        )
     }
 }
 
 struct DeleteMyDataView: View {
-    private let deletes = ["Account", "Selected categories", "Activities", "AI chat history", "Connected-service cache", "Plans"]
+    @Environment(\.appEnvironment) private var environment
+    @EnvironmentObject private var appState: AppState
     @State private var confirmation = false
+    @State private var isSubmitting = false
+    @State private var actionResult: PrivacyActionResult?
 
     var body: some View {
         List {
-            Section {
+            Section("Account deletion request") {
+                Text("Request deletion of your PacePilot account and PacePilot-owned training data. Some billing, safety, legal, or abuse-prevention records may be retained where required.")
+                    .foregroundStyle(PPColors.textMuted)
                 Toggle("I understand dangerous actions require confirmation", isOn: $confirmation)
+                Button(isSubmitting ? "Submitting request..." : "Request account deletion", role: .destructive) {
+                    requestAccountDeletion()
+                }
+                .disabled(!confirmation || isSubmitting)
             }
-            Section {
-                ForEach(deletes, id: \.self) { item in
-                    Button("Delete \(item)", role: .destructive) {}
-                        .disabled(!confirmation)
+            Section("Local clears") {
+                Button("Clear AI chat history", role: .destructive) {
+                    appState.aiThreads.removeAll()
+                    actionResult = PrivacyActionResult(title: "AI history cleared", message: "AI chat history was cleared on this device.")
+                }
+                Button("Clear Strava display cache", role: .destructive) {
+                    appState.deleteStravaCache()
+                    actionResult = PrivacyActionResult(title: "Strava cache cleared", message: "Strava display cache was cleared on this device.")
                 }
             }
-            Section {
-                Text("Deletion requests are logged in Supabase for auditability.")
+            Section("Processing") {
+                Text("Deletion requests are recorded for auditability and processed against PacePilot-owned data.")
                     .foregroundStyle(PPColors.textMuted)
             }
         }
@@ -164,6 +379,30 @@ struct DeleteMyDataView: View {
         .background(PPColors.backgroundNavy)
         .ppTabSafeAreaPadding()
         .navigationTitle("Delete My Data")
+        .alert(actionResult?.title ?? "Delete My Data", isPresented: Binding(get: { actionResult != nil }, set: { if !$0 { actionResult = nil } })) {
+            Button("OK") { actionResult = nil }
+        } message: {
+            Text(actionResult?.message ?? "")
+        }
+    }
+
+    private func requestAccountDeletion() {
+        guard confirmation, !isSubmitting else { return }
+        isSubmitting = true
+
+        Task {
+            actionResult = await AccountDataService(environment: environment, supabase: supabaseService()).requestAccountDeletion()
+            isSubmitting = false
+        }
+    }
+
+    private func supabaseService() -> SupabaseService {
+        SupabaseService(
+            configuration: SupabaseConfiguration(
+                url: environment.supabaseURL,
+                anonKey: environment.supabaseAnonKey
+            )
+        )
     }
 }
 

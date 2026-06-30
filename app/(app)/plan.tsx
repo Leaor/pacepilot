@@ -1,5 +1,15 @@
+import { Link } from "expo-router";
 import { CalendarClock, Download, GitBranch, ShieldCheck } from "lucide-react-native";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import {
+  planAdherenceFromWorkouts,
+  plannedDistanceThisWeek,
+  type AccountPlan
+} from "@/account/accountPlan";
+import { getAppRouteMode } from "@/account/routeMode";
+import { useAccountPlan } from "@/account/useAccountPlan";
+import { useAuth } from "@/auth/AuthContext";
 import { ActionButton } from "@/components/ActionButton";
 import { Card } from "@/components/Card";
 import { Pill } from "@/components/Pill";
@@ -16,6 +26,132 @@ import { generateTrainingPlan } from "@/lib/training/planGenerator";
 import { colors, spacing } from "@/lib/theme";
 
 export default function PlanScreen() {
+  const { configured, session } = useAuth();
+  const mode = getAppRouteMode({ configured, hasSession: Boolean(session) });
+
+  return mode === "sample" ? <PlanSampleScreen /> : <PlanAccountScreen session={session} />;
+}
+
+function PlanAccountScreen({ session }: { session: ReturnType<typeof useAuth>["session"] }) {
+  const planState = useAccountPlan(session);
+
+  if (planState.loading) {
+    return (
+      <Screen>
+        <SectionHeader title="Plan" caption="Loading your active training plan." />
+        <Card accent="cyan">
+          <Text muted>Checking your saved PacePilot plan and workouts.</Text>
+        </Card>
+      </Screen>
+    );
+  }
+
+  if (!planState.ok) {
+    return (
+      <Screen>
+        <SectionHeader title="Plan" caption="Your account is signed in." />
+        <Card accent="red">
+          <Text variant="subheading">Plan unavailable</Text>
+          <Text muted>{planState.message}</Text>
+        </Card>
+      </Screen>
+    );
+  }
+
+  if (planState.plan) {
+    return <AccountPlanDetail plan={planState.plan} />;
+  }
+
+  return (
+    <Screen>
+      <SectionHeader title="Plan" caption="No active training plan is stored for this account yet." />
+      <Card accent="purple">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">Create your first plan</Text>
+          <GitBranch color={colors.purple} size={22} />
+        </View>
+        <Text muted>
+          Authenticated accounts do not borrow the sample half-marathon plan. Build a plan from your current mileage,
+          race date, run days, and long-run preference.
+        </Text>
+        <Link href="/onboarding" style={styles.link}>
+          Start plan setup
+        </Link>
+      </Card>
+
+      <Card accent="green">
+        <Text variant="subheading">Safe defaults</Text>
+        <Text muted>
+          Until a plan exists, PacePilot will not show synthetic workouts, export a fake calendar, or mark preview
+          sessions as completed for this account.
+        </Text>
+      </Card>
+
+      <Card accent="cyan">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">Calendar export</Text>
+          <Download color={colors.cyan} size={22} />
+        </View>
+        <Text muted>Create a plan before exporting workouts to a calendar file.</Text>
+      </Card>
+    </Screen>
+  );
+}
+
+function AccountPlanDetail({ plan }: { plan: AccountPlan }) {
+  const plannedKm = plannedDistanceThisWeek(plan.workouts);
+  const adherence = planAdherenceFromWorkouts(plan.workouts);
+  const visibleWorkouts = plan.workouts.slice(0, 14);
+
+  return (
+    <Screen>
+      <SectionHeader title="Plan" caption={`${plan.name}${plan.raceDate ? ` · race date ${plan.raceDate}` : ""}`} />
+      <Card accent="purple">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">Current plan overview</Text>
+          <GitBranch color={colors.purple} size={22} />
+        </View>
+        <View style={styles.metricRow}>
+          <Pill label={`${plan.workouts.length} workouts`} tone="purple" />
+          <Pill label={`${plannedKm} km this week`} tone="cyan" />
+          <Pill label={`${adherence}% adherence`} tone="green" />
+        </View>
+        <Text muted>Loaded from your signed-in PacePilot account.</Text>
+      </Card>
+
+      {visibleWorkouts.map((workout) => (
+        <Card key={workout.id} accent={workout.workoutType === "long" ? "purple" : workout.intensity === "hard" ? "orange" : "green"}>
+          <View style={styles.headerRow}>
+            <View style={styles.copy}>
+              <Text variant="subheading">{workout.title}</Text>
+              <Text muted>{workout.scheduledDate}</Text>
+            </View>
+            <CalendarClock color={colors.textMuted} size={20} />
+          </View>
+          <Text muted>{workout.notes ?? workout.purpose ?? "Follow the saved plan guidance."}</Text>
+          <View style={styles.metricRow}>
+            {workout.distanceKm ? <Pill label={`${workout.distanceKm} km`} /> : null}
+            {workout.durationMinutes ? <Pill label={`${workout.durationMinutes} min`} tone="cyan" /> : null}
+            {workout.targetPace ? <Pill label={workout.targetPace} tone="cyan" /> : null}
+            <Pill label={workout.status.replace("_", " ")} tone={workout.status === "completed" ? "green" : "purple"} />
+          </View>
+        </Card>
+      ))}
+
+      <Card accent="cyan">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">Calendar export</Text>
+          <Download color={colors.cyan} size={22} />
+        </View>
+        <Text muted>Calendar export for account plans will use these saved workouts once export persistence is connected.</Text>
+      </Card>
+    </Screen>
+  );
+}
+
+function PlanSampleScreen() {
+  const [workoutStatus, setWorkoutStatus] = useState("planned");
+  const [notice, setNotice] = useState<string | null>(null);
   const plan = generateTrainingPlan({
     goalDistance: "half",
     raceDate: "2026-10-18",
@@ -90,13 +226,29 @@ export default function PlanScreen() {
         <View style={styles.metricRow}>
           <Pill label="Audio Coach on" tone="orange" />
           <Pill label={`${audioCues.length} cues`} tone="cyan" />
+          <Pill label={workoutStatus.replace("_", " ")} tone={workoutStatus === "completed" ? "green" : workoutStatus === "skipped" ? "orange" : "cyan"} />
         </View>
         <View style={styles.buttonRow}>
-          <ActionButton label="Move" variant="secondary" />
-          <ActionButton label="Mark done" variant="secondary" />
-          <ActionButton label="Skip safely" variant="secondary" />
+          <ActionButton label="Move" variant="secondary" onPress={() => setNotice(lifeMode.explanation)} />
+          <ActionButton
+            label="Mark done"
+            variant="secondary"
+            onPress={() => {
+              setWorkoutStatus("completed");
+              setNotice("Workout marked complete in this preview.");
+            }}
+          />
+          <ActionButton
+            label="Skip safely"
+            variant="secondary"
+            onPress={() => {
+              setWorkoutStatus("skipped");
+              setNotice(adaptation.explanation);
+            }}
+          />
         </View>
-        <ActionButton label="Start workout" />
+        <ActionButton label="Start workout" onPress={() => setNotice(`${audioCues.length} audio cues are ready for this workout preview.`)} />
+        {notice ? <Text muted>{notice}</Text> : null}
       </Card>
 
       <Card accent="green">
@@ -140,5 +292,10 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     gap: spacing.sm
+  },
+  link: {
+    color: colors.cyan,
+    fontSize: 15,
+    fontWeight: "700"
   }
 });

@@ -157,7 +157,7 @@ struct ActivityDetailView: View {
                     if activity.source == .pacepilotGPS {
                         PPButton(title: "Export to Strava", systemImage: "square.and.arrow.up") {
                             Task {
-                                stravaResult = await StravaService().export(activity: activity, environment: environment)
+                                stravaResult = await StravaService().export(activity: activity, environment: environment, supabase: supabaseService())
                             }
                         }
                     } else if activity.source == .stravaCache {
@@ -182,6 +182,15 @@ struct ActivityDetailView: View {
                 Text(stravaResult?.message ?? "")
             }
         }
+    }
+
+    private func supabaseService() -> SupabaseService {
+        SupabaseService(
+            configuration: SupabaseConfiguration(
+                url: environment.supabaseURL,
+                anonKey: environment.supabaseAnonKey
+            )
+        )
     }
 
     private var routeMap: some View {

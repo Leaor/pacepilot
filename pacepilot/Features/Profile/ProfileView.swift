@@ -4,7 +4,7 @@ struct ProfileView: View {
     @Environment(\.appEnvironment) private var environment
     @Environment(\.openURL) private var openURL
     @EnvironmentObject private var appState: AppState
-    @State private var stravaResult: StravaActionResult?
+    @State private var actionResult: StravaActionResult?
 
     var body: some View {
         NavigationStack {
@@ -40,6 +40,7 @@ struct ProfileView: View {
                         ),
                         warning: "AI coaching does not use Strava API/cache data.",
                         connectTitle: "Connect",
+                        cacheActionTitle: "Disconnect and clear cache",
                         onConnect: connectStrava,
                         onDisconnect: disconnectStrava,
                         onDeleteCache: deleteStravaCache
@@ -49,9 +50,10 @@ struct ProfileView: View {
                         status: GarminService(featureEnabled: environment.garminFeatureEnabled, mockMode: environment.mockGarmin).status(),
                         warning: "Garmin coaching use requires explicit consent.",
                         connectTitle: "Manage",
-                        onConnect: {},
-                        onDisconnect: {},
-                        onDeleteCache: {}
+                        cacheActionTitle: "Delete cached data",
+                        onConnect: showGarminStatus,
+                        onDisconnect: showGarminStatus,
+                        onDeleteCache: showGarminCacheStatus
                     )
                 }
 
@@ -61,10 +63,11 @@ struct ProfileView: View {
                 }
 
                 Section("Account") {
-                    Button("Export training plan to calendar") {}
+                    Button("Export training plan to calendar") {
+                        exportTrainingPlanCalendar()
+                    }
                     Button("Sign out") {
-                        appState.isAuthenticated = false
-                        appState.isDemoMode = false
+                        signOut()
                     }
                 }
             }
@@ -72,18 +75,18 @@ struct ProfileView: View {
             .background(PPColors.backgroundNavy)
             .ppTabSafeAreaPadding()
             .navigationTitle("Profile")
-            .alert(stravaResult?.title ?? "Strava", isPresented: Binding(get: { stravaResult != nil }, set: { if !$0 { stravaResult = nil } })) {
-                Button("OK") { stravaResult = nil }
+            .alert(actionResult?.title ?? "Profile", isPresented: Binding(get: { actionResult != nil }, set: { if !$0 { actionResult = nil } })) {
+                Button("OK") { actionResult = nil }
             } message: {
-                Text(stravaResult?.message ?? "")
+                Text(actionResult?.message ?? "")
             }
         }
     }
 
     private func connectStrava() {
         Task {
-            let result = await StravaService().connect(environment: environment)
-            stravaResult = result
+            let result = await StravaService().connect(environment: environment, supabase: supabaseService())
+            actionResult = result
             if let destinationURL = result.destinationURL {
                 openURL(destinationURL)
             }
@@ -92,16 +95,83 @@ struct ProfileView: View {
 
     private func disconnectStrava() {
         Task {
-            stravaResult = await StravaService().disconnect(environment: environment)
+            actionResult = await StravaService().disconnect(environment: environment, supabase: supabaseService())
         }
     }
 
     private func deleteStravaCache() {
         Task {
-            let result = await StravaService().deleteCachedData(environment: environment)
-            appState.deleteStravaCache()
-            stravaResult = result
+            let result = await StravaService().disconnectAndDeleteCachedData(environment: environment, supabase: supabaseService())
+            if result.succeeded {
+                appState.deleteStravaCache()
+            }
+            actionResult = result
         }
+    }
+
+    private func showGarminStatus() {
+        actionResult = StravaActionResult(
+            title: "Garmin unavailable",
+            message: GarminService(featureEnabled: environment.garminFeatureEnabled, mockMode: environment.mockGarmin).status().message,
+            destinationURL: nil
+        )
+    }
+
+    private func showGarminCacheStatus() {
+        actionResult = StravaActionResult(
+            title: "Garmin cache unavailable",
+            message: "Garmin cache controls will be enabled after partner approval and server-side sync support.",
+            destinationURL: nil
+        )
+    }
+
+    private func exportTrainingPlanCalendar() {
+        do {
+            let ics = CalendarExportService().ics(for: appState.trainingPlan, timezone: appState.profile.timezone)
+            guard let data = ics.data(using: .utf8),
+                  let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                throw ProfileActionError.exportFailed
+            }
+
+            let fileURL = directory.appendingPathComponent("pacepilot-training-plan.ics")
+            try data.write(to: fileURL, options: .atomic)
+            actionResult = StravaActionResult(
+                title: "Calendar export ready",
+                message: "Saved \(fileURL.lastPathComponent) in the PacePilot documents folder.",
+                destinationURL: nil
+            )
+        } catch {
+            actionResult = StravaActionResult(title: "Calendar export unavailable", message: error.localizedDescription, destinationURL: nil)
+        }
+    }
+
+    private func signOut() {
+        Task {
+            do {
+                try await supabaseService().signOut()
+            } catch {
+                // Local session state is still cleared so a stale client session cannot keep the app unlocked.
+            }
+
+            appState.signOutLocally()
+        }
+    }
+
+    private func supabaseService() -> SupabaseService {
+        SupabaseService(
+            configuration: SupabaseConfiguration(
+                url: environment.supabaseURL,
+                anonKey: environment.supabaseAnonKey
+            )
+        )
+    }
+}
+
+private enum ProfileActionError: LocalizedError {
+    case exportFailed
+
+    var errorDescription: String? {
+        "PacePilot could not save the calendar export on this device."
     }
 }
 
@@ -110,6 +180,7 @@ struct ConnectedServiceCard: View {
     let status: ConnectedServiceStatus
     let warning: String
     let connectTitle: String
+    let cacheActionTitle: String
     let onConnect: () -> Void
     let onDisconnect: () -> Void
     let onDeleteCache: () -> Void
@@ -131,7 +202,7 @@ struct ConnectedServiceCard: View {
             HStack {
                 Button(connectTitle, action: onConnect)
                 Button("Disconnect", role: .destructive, action: onDisconnect)
-                Button("Delete cached data", action: onDeleteCache)
+                Button(cacheActionTitle, action: onDeleteCache)
             }
             .font(PPTypography.caption)
         }

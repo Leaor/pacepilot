@@ -45,34 +45,67 @@ struct GearView: View {
 }
 
 struct ShoeDetailView: View {
+    @EnvironmentObject private var appState: AppState
     let shoe: Shoe
+    @State private var actionResult: GearActionResult?
+
+    private var currentShoe: Shoe {
+        appState.shoes.first { $0.id == shoe.id } ?? shoe
+    }
 
     var body: some View {
         List {
             Section("Shoe") {
-                Label(shoe.brand, systemImage: "tag")
-                Label(shoe.model, systemImage: "shoeprints.fill")
-                Label(shoe.nickname, systemImage: "quote.bubble")
-                Label(shoe.purchaseDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                Label(currentShoe.brand, systemImage: "tag")
+                Label(currentShoe.model, systemImage: "shoeprints.fill")
+                Label(currentShoe.nickname, systemImage: "quote.bubble")
+                Label(currentShoe.purchaseDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
             }
             Section("Mileage") {
-                ProgressView(value: shoe.progress)
+                ProgressView(value: currentShoe.progress)
                     .tint(PPColors.orange)
-                Text(String(format: "%.0f km current", shoe.currentMileage))
-                Text(String(format: "%.0f km retirement target", shoe.retirementMileageTarget))
+                Text(String(format: "%.0f km current", currentShoe.currentMileage))
+                Text(String(format: "%.0f km retirement target", currentShoe.retirementMileageTarget))
             }
             Section("History") {
                 Text("Assigned activity history appears here after production sync.")
-                Button("Mark retired") {}
+                if currentShoe.status == .active {
+                    Button("Mark retired", role: .destructive) {
+                        markRetired()
+                    }
+                } else {
+                    Label("Retired", systemImage: "checkmark.circle.fill")
+                }
             }
             Section("Notes") {
-                Text(shoe.notes)
+                Text(currentShoe.notes)
             }
         }
         .scrollContentBackground(.hidden)
         .background(PPColors.backgroundNavy)
-        .navigationTitle(shoe.nickname)
+        .navigationTitle(currentShoe.nickname)
+        .alert(actionResult?.title ?? "Shoe", isPresented: Binding(get: { actionResult != nil }, set: { if !$0 { actionResult = nil } })) {
+            Button("OK") { actionResult = nil }
+        } message: {
+            Text(actionResult?.message ?? "")
+        }
     }
+
+    private func markRetired() {
+        guard let index = appState.shoes.firstIndex(where: { $0.id == shoe.id }) else {
+            actionResult = GearActionResult(title: "Shoe unavailable", message: "PacePilot could not find this shoe in your gear list.")
+            return
+        }
+
+        appState.shoes[index].status = .retired
+        actionResult = GearActionResult(title: "Shoe retired", message: "\(currentShoe.nickname) has been marked retired.")
+    }
+}
+
+private struct GearActionResult: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var message: String
 }
 
 struct AddShoeView: View {

@@ -1,8 +1,70 @@
-export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
-};
+const defaultAllowedMethods = "GET, POST, OPTIONS";
+const defaultAllowedHeaders = "authorization, x-client-info, apikey, content-type";
+
+function normalizeOrigin(origin: string): string | null {
+  const trimmed = origin.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (trimmed === "*") {
+    return "*";
+  }
+
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return null;
+  }
+}
+
+function allowedOrigins(): string[] {
+  const raw = Deno.env.get("CORS_ALLOWED_ORIGINS") ?? Deno.env.get("ALLOWED_ORIGINS") ?? "";
+  return raw
+    .split(",")
+    .map((origin) => normalizeOrigin(origin))
+    .filter((origin): origin is string => Boolean(origin));
+}
+
+export function isProductionEnvironment(): boolean {
+  const raw = Deno.env.get("APP_ENV") ?? Deno.env.get("ENVIRONMENT") ?? "";
+  const normalized = raw.trim().toLowerCase();
+  return normalized === "production" || normalized === "prod";
+}
+
+export function isOriginAllowed(req?: Request): boolean {
+  const requestOrigin = req?.headers.get("origin");
+  if (!requestOrigin) {
+    return true;
+  }
+
+  const normalizedRequestOrigin = normalizeOrigin(requestOrigin);
+  if (!normalizedRequestOrigin) {
+    return false;
+  }
+
+  const origins = allowedOrigins();
+  if (isProductionEnvironment()) {
+    return origins.includes(normalizedRequestOrigin);
+  }
+
+  return origins.length === 0 || origins.includes("*") || origins.includes(normalizedRequestOrigin);
+}
+
+export function corsHeadersForRequest(req?: Request): Record<string, string> {
+  const origins = allowedOrigins();
+  const requestOrigin = normalizeOrigin(req?.headers.get("origin") ?? "");
+  const wildcardAllowed = !isProductionEnvironment() && (origins.length === 0 || origins.includes("*"));
+  const allowedOrigin = wildcardAllowed ? "*" : requestOrigin && origins.includes(requestOrigin) ? requestOrigin : "";
+
+  return {
+    ...(allowedOrigin ? { "Access-Control-Allow-Origin": allowedOrigin } : {}),
+    "Access-Control-Allow-Headers": defaultAllowedHeaders,
+    "Access-Control-Allow-Methods": defaultAllowedMethods,
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin"
+  };
+}
 
 export class HttpError extends Error {
   status: number;
@@ -16,35 +78,42 @@ export class HttpError extends Error {
   }
 }
 
-export function jsonResponse(body: unknown, status = 200): Response {
+export function jsonResponse(body: unknown, status = 200, req?: Request): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      ...corsHeaders,
+      ...corsHeadersForRequest(req),
       "Content-Type": "application/json"
     }
   });
 }
 
-export function errorResponse(message = "Request failed", status = 500): Response {
-  return jsonResponse({ error: message }, status);
+export function errorResponse(message = "Request failed", status = 500, req?: Request): Response {
+  return jsonResponse({ error: message }, status, req);
 }
 
-export function methodNotAllowed(): Response {
-  return errorResponse("Method not allowed", 405);
+export function methodNotAllowed(req?: Request): Response {
+  return errorResponse("Method not allowed", 405, req);
 }
 
-export function safeErrorResponse(error: unknown, fallback = "Request failed"): Response {
+export function safeErrorResponse(error: unknown, fallback = "Request failed", req?: Request): Response {
   if (error instanceof HttpError) {
-    return errorResponse(error.publicMessage, error.status);
+    return errorResponse(error.publicMessage, error.status, req);
   }
 
-  return errorResponse(fallback, 500);
+  return errorResponse(fallback, 500, req);
 }
 
 export function handleOptions(req: Request): Response | null {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    if (!isOriginAllowed(req)) {
+      return new Response("Origin not allowed", {
+        status: 403,
+        headers: corsHeadersForRequest(req)
+      });
+    }
+
+    return new Response("ok", { headers: corsHeadersForRequest(req) });
   }
 
   return null;

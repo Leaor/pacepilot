@@ -1,4 +1,5 @@
 import { CheckCircle2 } from "lucide-react-native";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { ActionButton } from "@/components/ActionButton";
 import { Card } from "@/components/Card";
@@ -27,14 +28,16 @@ const tiers = [
 ];
 
 export default function PaywallScreen() {
+  const [selectedTier, setSelectedTier] = useState("Free");
+
   return (
     <Screen>
-      <SectionHeader title="Upgrade" caption="RevenueCat-ready subscriptions with local mock mode for development." />
+      <SectionHeader title="Upgrade" caption="Choose the coaching depth that matches your season." />
       {tiers.map((tier) => (
         <Card key={tier.name} accent={tier.tone}>
           <View style={styles.headerRow}>
             <Text variant="subheading">{tier.name}</Text>
-            <Pill label={tier.name === "Free" ? "Included" : "Premium"} tone={tier.tone} />
+            <Pill label={tier.name === selectedTier ? "Selected" : tier.name === "Free" ? "Included" : "Premium"} tone={tier.tone} />
           </View>
           {tier.features.map((feature) => (
             <View key={feature} style={styles.row}>
@@ -42,7 +45,9 @@ export default function PaywallScreen() {
               <Text>{feature}</Text>
             </View>
           ))}
-          {tier.name !== "Free" ? <ActionButton label={`Choose ${tier.name}`} variant="secondary" /> : null}
+          {tier.name !== "Free" ? (
+            <ActionButton label={`Choose ${tier.name}`} variant="secondary" onPress={() => setSelectedTier(tier.name)} />
+          ) : null}
         </Card>
       ))}
     </Screen>

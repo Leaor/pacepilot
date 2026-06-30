@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SignInView: View {
+    @Environment(\.appEnvironment) private var environment
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
     @StateObject private var auth = AuthService()
@@ -15,19 +16,26 @@ struct SignInView: View {
                     SecureField("Password", text: $auth.password)
                 }
                 Section {
-                    PPButton(title: "Sign In", systemImage: "arrow.right.circle.fill") {
-                        appState.isAuthenticated = true
-                        appState.isDemoMode = false
-                        dismiss()
+                    PPButton(title: auth.isLoading ? "Signing In..." : "Sign In", systemImage: "arrow.right.circle.fill") {
+                        Task {
+                            if await auth.signIn(environment: environment, appState: appState) {
+                                dismiss()
+                            }
+                        }
                     }
+                    .disabled(auth.isLoading)
                     PPButton(title: "Magic Link", systemImage: "link", role: .secondary) {
-                        auth.mode = .magicLink
-                        auth.message = "Magic link flow is Supabase-ready."
+                        Task {
+                            await auth.sendMagicLink(environment: environment)
+                        }
                     }
+                    .disabled(auth.isLoading)
                     PPButton(title: "Forgot Password", systemImage: "questionmark.circle", role: .quiet) {
-                        auth.mode = .forgotPassword
-                        auth.message = "Password reset email will be sent by Supabase Auth."
+                        Task {
+                            await auth.resetPassword(environment: environment)
+                        }
                     }
+                    .disabled(auth.isLoading)
                 }
                 if let message = auth.message {
                     Text(message)

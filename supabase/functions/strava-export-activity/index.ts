@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return methodNotAllowed();
+    return methodNotAllowed(req);
   }
 
   try {
@@ -143,8 +143,8 @@ Deno.serve(async (req) => {
       exported: true,
       stravaActivityId: stravaPayload.id,
       athleteId: token.athleteId
-    }, 201);
+    }, 201, req);
   } catch (error) {
-    return safeErrorResponse(error, "Strava activity export failed");
+    return safeErrorResponse(error, "Strava activity export failed", req);
   }
 });

@@ -1,15 +1,27 @@
 import SwiftUI
 
 struct ForgotPasswordView: View {
-    @State private var email = ""
+    @Environment(\.appEnvironment) private var environment
+    @StateObject private var auth = AuthService()
 
     var body: some View {
         Form {
             Section("Forgot password") {
-                TextField("Email", text: $email)
+                TextField("Email", text: $auth.email)
                     .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
-                Text("Password recovery is handled through Supabase Auth email templates.")
+                Text("Enter your account email and PacePilot will send a secure reset link.")
+                    .foregroundStyle(PPColors.textMuted)
+                PPButton(title: auth.isLoading ? "Sending..." : "Send Reset Link", systemImage: "questionmark.circle") {
+                    Task {
+                        await auth.resetPassword(environment: environment)
+                    }
+                }
+                .disabled(auth.isLoading)
+                if let message = auth.message {
+                    Text(message)
+                        .foregroundStyle(PPColors.textMuted)
+                }
             }
         }
         .scrollContentBackground(.hidden)

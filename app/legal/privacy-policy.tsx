@@ -5,9 +5,9 @@ export default function PrivacyPolicyScreen() {
     <LegalPage
       title="Privacy Policy"
       sections={[
-        "Describe account data, training data, GPS data, check-ins, subscriptions, support requests, and AI coaching data.",
-        "State that AI coaching is opt-in and uses only authorized PacePilot-native data.",
-        "Document US and Canada privacy request handling for access, export, deletion, and correction."
+        "PacePilot stores account data, training plans, workouts, activities, GPS routes when enabled, check-ins, subscriptions, support requests, and AI coaching metadata.",
+        "AI coaching is opt-in and uses only authorized PacePilot-native data, user-provided imports, permitted health data, and chat text.",
+        "Users in the United States and Canada can request access, export, deletion, and correction through the Privacy Center and support channels."
       ]}
     />
   );

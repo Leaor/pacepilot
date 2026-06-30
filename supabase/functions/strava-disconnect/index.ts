@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return methodNotAllowed();
+    return methodNotAllowed(req);
   }
 
   try {
@@ -95,8 +95,8 @@ Deno.serve(async (req) => {
       disconnected: true,
       cacheCleared: clearCache,
       revokeStatus
-    });
+    }, 200, req);
   } catch (error) {
-    return safeErrorResponse(error, "Strava disconnect failed");
+    return safeErrorResponse(error, "Strava disconnect failed", req);
   }
 });

@@ -1,5 +1,8 @@
+import { Link } from "expo-router";
 import { Download, ShieldCheck, Trash2 } from "lucide-react-native";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { useAuth } from "@/auth/AuthContext";
 import { ActionButton } from "@/components/ActionButton";
 import { Card } from "@/components/Card";
 import { Pill } from "@/components/Pill";
@@ -7,6 +10,13 @@ import { Screen } from "@/components/Screen";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Text } from "@/components/Text";
 import { defaultPrivacyPreferences } from "@/privacy/defaults";
+import {
+  accountDataControlUnavailableMessage,
+  disconnectStrava,
+  requestAccountDeletion,
+  requestFullDataExport,
+  type PrivacyActionResult
+} from "@/privacy/dataControls";
 import { colors, spacing } from "@/lib/theme";
 
 const dataCategories = [
@@ -36,13 +46,71 @@ const toggles = [
   ["Public profile", !defaultPrivacyPreferences.profilePrivate]
 ] as const;
 
-const exportControls = ["Request full data export", "Export activities", "Export plans", "Export AI chats", "Export shoes"];
-const deleteControls = ["Delete account", "Delete activities only", "Delete AI chat history only", "Delete connected-service cache only", "Delete plans only"];
+type BusyAction = "export" | "strava-disconnect" | "strava-clear-cache" | "account-deletion";
+type ConfirmableAction = Exclude<BusyAction, "export">;
+type Notice = {
+  message: string;
+  tone: "cyan" | "green" | "orange" | "red";
+};
 
 export default function PrivacyScreen() {
+  const { configured, loading, session } = useAuth();
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<ConfirmableAction | null>(null);
+  const accountControlState = { configured, loading, hasSession: Boolean(session) };
+  const unavailableMessage = accountDataControlUnavailableMessage(accountControlState);
+  const controlsDisabled = Boolean(unavailableMessage) || Boolean(busyAction);
+
+  async function runPrivacyAction(action: BusyAction, runner: () => Promise<PrivacyActionResult>) {
+    setBusyAction(action);
+    setNotice(null);
+
+    try {
+      const result = await runner();
+      setNotice({
+        message: result.message,
+        tone: result.ok ? "green" : "red"
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function runConfirmedAction(
+    action: ConfirmableAction,
+    confirmationMessage: string,
+    runner: () => Promise<PrivacyActionResult>
+  ) {
+    if (pendingConfirmation !== action) {
+      setPendingConfirmation(action);
+      setNotice({
+        message: confirmationMessage,
+        tone: "orange"
+      });
+      return;
+    }
+
+    setPendingConfirmation(null);
+    void runPrivacyAction(action, runner);
+  }
+
   return (
     <Screen>
       <SectionHeader title="Privacy Center" caption="Private by default with explicit AI, analytics, export, and deletion controls." />
+      <Card accent={unavailableMessage ? "orange" : "green"}>
+        <Text variant="subheading">{unavailableMessage ? "Account controls paused" : "Signed-in account controls"}</Text>
+        <Text muted>
+          {unavailableMessage ??
+            `Requests run through authenticated Supabase Edge Functions for ${session?.user.email ?? "your account"}.`}
+        </Text>
+        {configured && !loading && !session ? (
+          <Link href="/sign-in" style={styles.link}>
+            Sign in
+          </Link>
+        ) : null}
+      </Card>
+
       <Card accent="cyan">
         <View style={styles.headerRow}>
           <Text variant="subheading">Data overview</Text>
@@ -68,10 +136,46 @@ export default function PrivacyScreen() {
 
       <Card accent="orange">
         <Text variant="subheading">Connected services data</Text>
-        <Text muted>Disconnect services, delete cached connected-service data, and review last-sync/cache-expiry metadata.</Text>
+        <Text muted>Disconnect Strava access from your account. Cached Strava display data can be cleared during disconnect.</Text>
         <View style={styles.buttonRow}>
-          <ActionButton label="Disconnect Strava" variant="secondary" />
-          <ActionButton label="Delete Strava cache" variant="secondary" />
+          <ActionButton
+            label={
+              busyAction === "strava-disconnect"
+                ? "Disconnecting..."
+                : pendingConfirmation === "strava-disconnect"
+                  ? "Confirm disconnect"
+                  : "Disconnect Strava"
+            }
+            variant="secondary"
+            disabled={controlsDisabled}
+            style={styles.buttonInRow}
+            onPress={() =>
+              runConfirmedAction(
+                "strava-disconnect",
+                "Press Confirm disconnect to revoke Strava access. Cached Strava display data will be left in place.",
+                () => disconnectStrava(accountControlState, false)
+              )
+            }
+          />
+          <ActionButton
+            label={
+              busyAction === "strava-clear-cache"
+                ? "Clearing..."
+                : pendingConfirmation === "strava-clear-cache"
+                  ? "Confirm clear cache"
+                  : "Disconnect and clear cache"
+            }
+            variant="secondary"
+            disabled={controlsDisabled}
+            style={styles.buttonInRow}
+            onPress={() =>
+              runConfirmedAction(
+                "strava-clear-cache",
+                "Press Confirm clear cache to revoke Strava access and remove cached Strava activities stored by PacePilot.",
+                () => disconnectStrava(accountControlState, true)
+              )
+            }
+          />
         </View>
       </Card>
 
@@ -80,9 +184,13 @@ export default function PrivacyScreen() {
           <Text variant="subheading">Export my data</Text>
           <Download color={colors.purple} size={22} />
         </View>
-        {exportControls.map((control) => (
-          <ActionButton key={control} label={control} variant="secondary" />
-        ))}
+        <Text muted>Generate the full account export available to PacePilot. Connected-service tokens are redacted.</Text>
+        <ActionButton
+          label={busyAction === "export" ? "Generating export..." : "Generate full data export"}
+          variant="secondary"
+          disabled={controlsDisabled}
+          onPress={() => void runPrivacyAction("export", () => requestFullDataExport(accountControlState))}
+        />
       </Card>
 
       <Card accent="red">
@@ -90,11 +198,32 @@ export default function PrivacyScreen() {
           <Text variant="subheading">Delete my data</Text>
           <Trash2 color={colors.red} size={22} />
         </View>
-        {deleteControls.map((control) => (
-          <ActionButton key={control} label={control} variant="secondary" />
-        ))}
-        <Text muted>Production deletion rules require lawyer-reviewed Data Deletion Policy language.</Text>
+        <Text muted>Record an account deletion request for PacePilot-owned data. External services must be managed with that provider.</Text>
+        <ActionButton
+          label={
+            busyAction === "account-deletion"
+              ? "Recording request..."
+              : pendingConfirmation === "account-deletion"
+                ? "Confirm deletion request"
+                : "Request account deletion"
+          }
+          variant="secondary"
+          disabled={controlsDisabled}
+          onPress={() =>
+            runConfirmedAction(
+              "account-deletion",
+              "Press Confirm deletion request to record a deletion request for your signed-in PacePilot account.",
+              () => requestAccountDeletion(accountControlState)
+            )
+          }
+        />
+        <Text muted>Requests are recorded for auditability before account data is processed.</Text>
       </Card>
+      {notice ? (
+        <Card accent={notice.tone}>
+          <Text muted>{notice.message}</Text>
+        </Card>
+      ) : null}
     </Screen>
   );
 }
@@ -119,6 +248,16 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm
+  },
+  buttonInRow: {
+    flexBasis: 210,
+    flexGrow: 1
+  },
+  link: {
+    color: colors.cyan,
+    fontSize: 15,
+    fontWeight: "700"
   }
 });

@@ -11,10 +11,10 @@ type LegalPageProps = {
 export function LegalPage({ title, sections }: LegalPageProps) {
   return (
     <Screen>
-      <SectionHeader title={title} caption="Placeholder content for MVP implementation." />
+      <SectionHeader title={title} caption="Policy summary for PacePilot account holders." />
       <Card accent="orange">
-        <Text variant="subheading">Legal Review Required</Text>
-        <Text muted>TODO: Final policy language requires qualified legal review before production launch.</Text>
+        <Text variant="subheading">Review Status</Text>
+        <Text muted>Final public policy language should be reviewed by qualified counsel before App Store release.</Text>
       </Card>
       {sections.map((section) => (
         <Card key={section} accent="cyan">

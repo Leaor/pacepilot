@@ -8,12 +8,12 @@ struct DemoModeView: View {
             Image("PacePilotLogo")
                 .resizable()
                 .frame(width: 72, height: 72)
-            Text("Demo Mode")
+            Text("Sample Plan")
                 .font(PPTypography.title)
-            Text("Explore Michael’s 10K plan with mock subscription, mock AI, and no production secrets.")
+            Text("Explore a complete 10K training week with sample activities, coaching history, and privacy controls.")
                 .foregroundStyle(PPColors.textMuted)
                 .multilineTextAlignment(.center)
-            PPButton(title: "Start Demo", systemImage: "play.fill") {
+            PPButton(title: "Start Preview", systemImage: "play.fill") {
                 appState.activateDemoMode()
             }
         }

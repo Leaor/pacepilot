@@ -4,6 +4,7 @@ struct PlanView: View {
     @EnvironmentObject private var appState: AppState
     @State private var selectedWorkout: Workout?
     @State private var showingCalendarExport = false
+    @State private var actionResult: PlanActionResult?
 
     var body: some View {
         NavigationStack {
@@ -32,6 +33,11 @@ struct PlanView: View {
             .sheet(isPresented: $showingCalendarExport) {
                 CalendarExportSheet(plan: appState.trainingPlan)
             }
+            .alert(actionResult?.title ?? "Plan", isPresented: Binding(get: { actionResult != nil }, set: { if !$0 { actionResult = nil } })) {
+                Button("OK") { actionResult = nil }
+            } message: {
+                Text(actionResult?.message ?? "")
+            }
         }
     }
 
@@ -58,8 +64,12 @@ struct PlanView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
                 HStack {
-                    PPButton(title: "Regenerate Week", systemImage: "arrow.clockwise", role: .secondary) {}
-                    PPButton(title: "Life Mode", systemImage: "slider.horizontal.3", role: .quiet) {}
+                    PPButton(title: "Regenerate Week", systemImage: "arrow.clockwise", role: .secondary) {
+                        regeneratePlan()
+                    }
+                    PPButton(title: "Life Mode", systemImage: "slider.horizontal.3", role: .quiet) {
+                        showLifeModeSuggestion()
+                    }
                 }
             }
         }
@@ -136,6 +146,35 @@ struct PlanView: View {
         case .race: PPColors.raceOrange
         }
     }
+
+    private func regeneratePlan() {
+        let aRace = appState.trainingPlan.aRace
+        let bRace = appState.trainingPlan.bRace
+        var regeneratedPlan = TrainingPlanService().generateDemoPlan(for: appState.profile)
+        regeneratedPlan.aRace = aRace
+        regeneratedPlan.bRace = bRace
+        appState.trainingPlan = regeneratedPlan
+        actionResult = PlanActionResult(title: "Plan regenerated", message: "Your plan was rebuilt from the current profile, race date, and training preferences.")
+    }
+
+    private func showLifeModeSuggestion() {
+        if let latestCheckIn = appState.checkIns.sorted(by: { $0.date > $1.date }).first {
+            actionResult = PlanActionResult(title: "Life Mode", message: WeeklyAdjustmentEngine.nextWeekAdjustment(from: latestCheckIn))
+            return
+        }
+
+        let suggestion = LifeModeEngine.suggestions(for: .busyWeek).first
+        actionResult = PlanActionResult(
+            title: "Life Mode",
+            message: [suggestion?.action, suggestion?.detail].compactMap { $0 }.joined(separator: ": ")
+        )
+    }
+}
+
+private struct PlanActionResult: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var message: String
 }
 
 struct WorkoutDetailSheet: View {

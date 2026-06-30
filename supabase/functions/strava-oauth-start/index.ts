@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== "GET") {
-    return methodNotAllowed();
+    return methodNotAllowed(req);
   }
 
   try {
@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
     url.searchParams.set("scope", Deno.env.get("STRAVA_OAUTH_SCOPE") ?? "read,activity:read,activity:write");
     url.searchParams.set("state", await createOAuthState(user.id));
 
-    return jsonResponse({ authorizationUrl: url.toString() });
+    return jsonResponse({ authorizationUrl: url.toString() }, 200, req);
   } catch (error) {
-    return safeErrorResponse(error, "Strava OAuth start failed");
+    return safeErrorResponse(error, "Strava OAuth start failed", req);
   }
 });

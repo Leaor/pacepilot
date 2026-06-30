@@ -53,8 +53,8 @@ struct OnboardingView: View {
                 PPButton(title: "Generate Plan", systemImage: "sparkles") {
                     appState.profile = profile
                     appState.trainingPlan = TrainingPlanService().generateDemoPlan(for: profile)
-                    appState.isAuthenticated = true
-                    appState.isDemoMode = false
+                    appState.isAuthenticated = false
+                    appState.isDemoMode = true
                     dismiss()
                 }
             }

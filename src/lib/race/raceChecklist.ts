@@ -15,7 +15,7 @@ export function createRaceWeekendChecklist(raceTitle: string): RaceChecklistItem
     { id: "fuel", label: "Gels, fuel, and hydration", category: "fuel" },
     { id: "outfit", label: "Race outfit checked against weather", category: "gear" },
     { id: "corral", label: "Start corral and warm-up time", category: "logistics" },
-    { id: "contact", label: "Emergency contact placeholder", category: "safety" },
+    { id: "contact", label: "Emergency contact confirmed", category: "safety" },
     { id: "recovery", label: "Post-race recovery items", category: "recovery" }
   ];
 

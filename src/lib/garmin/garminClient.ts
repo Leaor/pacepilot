@@ -7,6 +7,6 @@ export async function getGarminStatus() {
 export async function connectGarmin() {
   return {
     authorizationUrl: null,
-    message: "Garmin integration requires developer approval and is feature-flagged for future release."
+    message: "Garmin connection is available after partner approval."
   };
 }

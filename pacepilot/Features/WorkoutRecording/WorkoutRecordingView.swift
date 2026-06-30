@@ -149,7 +149,7 @@ struct WorkoutRecordingView: View {
                 PPButton(title: "Start", systemImage: "play.fill") {
                     recorder.start()
                 }
-                PPCircleIconButton(systemImage: "waveform.path.ecg", label: "Load demo route", color: PPColors.surfaceLight) {
+                PPCircleIconButton(systemImage: "waveform.path.ecg", label: "Load sample route", color: PPColors.surfaceLight) {
                     recorder.enableMockRecording()
                     centerOnLatestRoutePoint()
                 }

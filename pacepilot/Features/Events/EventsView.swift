@@ -98,8 +98,11 @@ struct EventRow: View {
 
 struct EventDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @EnvironmentObject private var appState: AppState
     let event: RaceEvent
     @State private var showingStrategy = false
+    @State private var actionResult: EventActionResult?
 
     var body: some View {
         NavigationStack {
@@ -123,12 +126,20 @@ struct EventDetailView: View {
                     }
 
                     HStack {
-                        PPButton(title: "Register", systemImage: "safari") {}
-                        PPButton(title: "A-race", systemImage: "flag.fill", role: .secondary) {}
+                        PPButton(title: "Register", systemImage: "safari") {
+                            register()
+                        }
+                        PPButton(title: "A-race", systemImage: "flag.fill", role: .secondary) {
+                            assignRace(priority: .a)
+                        }
                     }
                     HStack {
-                        PPButton(title: "B-race", systemImage: "flag", role: .secondary) {}
-                        PPButton(title: "Create Plan", systemImage: "sparkles", role: .quiet) {}
+                        PPButton(title: "B-race", systemImage: "flag", role: .secondary) {
+                            assignRace(priority: .b)
+                        }
+                        PPButton(title: "Create Plan", systemImage: "sparkles", role: .quiet) {
+                            createPlan()
+                        }
                     }
 
                     PPButton(title: "Race Strategy Builder", systemImage: "map.fill") {
@@ -147,6 +158,84 @@ struct EventDetailView: View {
             .sheet(isPresented: $showingStrategy) {
                 RaceStrategyBuilderView(event: event)
             }
+            .alert(actionResult?.title ?? "Event", isPresented: Binding(get: { actionResult != nil }, set: { if !$0 { actionResult = nil } })) {
+                Button("OK") { actionResult = nil }
+            } message: {
+                Text(actionResult?.message ?? "")
+            }
         }
     }
+
+    private func register() {
+        guard let registrationURL = event.registrationURL else {
+            actionResult = EventActionResult(title: "Registration unavailable", message: "This event does not include a registration URL yet.")
+            return
+        }
+
+        openURL(registrationURL)
+    }
+
+    private func assignRace(priority: EventPriority) {
+        switch priority {
+        case .a:
+            appState.trainingPlan.aRace = event
+            appState.profile.raceDate = event.date
+            appState.profile.goal = goal(for: event)
+            actionResult = EventActionResult(title: "A-race set", message: "\(event.name) is now your primary race.")
+        case .b:
+            appState.trainingPlan.bRace = event
+            actionResult = EventActionResult(title: "B-race set", message: "\(event.name) is now saved as a tune-up race.")
+        }
+    }
+
+    private func createPlan() {
+        let goal = goal(for: event)
+        appState.profile.goal = goal
+        appState.profile.raceDate = event.date
+
+        var plan = PlanGenerator.generate(
+            from: PlanInput(
+                goal: goal,
+                raceDate: event.date,
+                goalTimeSeconds: appState.profile.goalTimeSeconds,
+                currentWeeklyMileage: appState.profile.currentWeeklyMileage,
+                trainingDaysPerWeek: appState.profile.availableRunDays.count,
+                availableRunDays: appState.profile.availableRunDays,
+                experienceLevel: appState.profile.experience,
+                recentRaceResult: nil,
+                injuryCaution: appState.profile.injuryCaution,
+                strengthPreference: appState.profile.strengthPreference,
+                preferredLongRunDay: appState.profile.preferredLongRunDay
+            )
+        )
+        plan.aRace = event
+        appState.trainingPlan = plan
+        actionResult = EventActionResult(title: "Plan created", message: "A \(goal.title) plan was created for \(event.name).")
+    }
+
+    private func goal(for event: RaceEvent) -> TrainingGoal {
+        switch event.distanceKilometers {
+        case ..<7:
+            return .first5K
+        case ..<15:
+            return .tenK
+        case ..<30:
+            return .halfMarathon
+        case ..<45:
+            return .marathon
+        default:
+            return .ultra
+        }
+    }
+}
+
+private enum EventPriority {
+    case a
+    case b
+}
+
+private struct EventActionResult: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var message: String
 }

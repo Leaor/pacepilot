@@ -15,8 +15,11 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.background }
         }}
       >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+        <Stack.Screen name="callback" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding/index" options={{ title: "Calibration" }} />
         <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
         <Stack.Screen name="privacy" options={{ title: "Privacy & Data" }} />

@@ -1,6 +1,7 @@
 import { Link } from "expo-router";
 import { Cable, Play } from "lucide-react-native";
 import { StyleSheet, View } from "react-native";
+import { useAuth } from "@/auth/AuthContext";
 import { LogoMark } from "@/components/LogoMark";
 import { Card } from "@/components/Card";
 import { Screen } from "@/components/Screen";
@@ -8,6 +9,8 @@ import { Text } from "@/components/Text";
 import { colors, spacing } from "@/lib/theme";
 
 export default function WelcomeScreen() {
+  const { configured } = useAuth();
+
   return (
     <Screen>
       <View style={styles.hero}>
@@ -20,15 +23,17 @@ export default function WelcomeScreen() {
           </Text>
         </View>
         <Link href="/onboarding" style={[styles.cta, styles.primaryCta]}>
-          Create Plan
+          Preview Plan Setup
         </Link>
         <View style={styles.ctaRow}>
           <Link href="/sign-in" style={[styles.cta, styles.secondaryCta]}>
             Sign In
           </Link>
-          <Link href="/today" style={[styles.cta, styles.secondaryCta]}>
-            Try Demo
-          </Link>
+          {!configured ? (
+            <Link href="/today" style={[styles.cta, styles.secondaryCta]}>
+              Try Sample Plan
+            </Link>
+          ) : null}
         </View>
       </View>
 
@@ -42,16 +47,18 @@ export default function WelcomeScreen() {
         </Text>
       </Card>
 
-      <Card accent="cyan">
-        <View style={styles.featureHeader}>
-          <Play color={colors.cyan} size={22} />
-          <Text variant="subheading">Demo training week</Text>
-        </View>
-        <Text muted>Preview Today, Plan, Activities, Events, Coach, and Profile with safe mock data.</Text>
-        <Link href="/today" style={styles.inlineLink}>
-          Open demo
-        </Link>
-      </Card>
+      {!configured ? (
+        <Card accent="cyan">
+          <View style={styles.featureHeader}>
+            <Play color={colors.cyan} size={22} />
+            <Text variant="subheading">Sample training week</Text>
+          </View>
+          <Text muted>Preview Today, Plan, Activities, Events, Coach, and Profile with safe sample data.</Text>
+          <Link href="/today" style={styles.inlineLink}>
+            Open sample plan
+          </Link>
+        </Card>
+      ) : null}
     </Screen>
   );
 }

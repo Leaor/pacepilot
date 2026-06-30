@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct CoachView: View {
@@ -6,7 +7,8 @@ struct CoachView: View {
     @State private var message = ""
     @State private var isTyping = false
     @State private var errorMessage: String?
-    @State private var thread: AIChatThread = PreviewData.demoAIThreads[0]
+    @State private var thread: AIChatThread = CoachView.emptyThread()
+    @State private var actionResult: CoachActionResult?
 
     private let prompts = [
         "Adjust my week",
@@ -47,15 +49,23 @@ struct CoachView: View {
             }
             .ppScreen()
             .navigationTitle("Coach")
+            .onAppear(perform: syncThreadForSession)
+            .onChange(of: appState.isDemoMode) { _, _ in syncThreadForSession() }
+            .onChange(of: appState.aiThreads) { _, _ in syncThreadForSession() }
             .toolbar {
                 Menu {
                     Button("Regenerate") { regenerate() }
-                    Button("Clear chat") { thread.messages.removeAll() }
-                    Button("Export chat") {}
-                    Button("Delete chat", role: .destructive) { thread.messages.removeAll() }
+                    Button("Clear chat") { clearChat() }
+                    Button("Export chat") { exportChat() }
+                    Button("Delete chat", role: .destructive) { clearChat() }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+            }
+            .alert(actionResult?.title ?? "Coach", isPresented: Binding(get: { actionResult != nil }, set: { if !$0 { actionResult = nil } })) {
+                Button("OK") { actionResult = nil }
+            } message: {
+                Text(actionResult?.message ?? "")
             }
         }
     }
@@ -177,6 +187,7 @@ struct CoachView: View {
         errorMessage = nil
         let user = AIChatMessage(id: UUID(), role: .user, text: text, createdAt: .now, usedSources: [], excludedSources: [])
         thread.messages.append(user)
+        persistThreadLocally()
         isTyping = true
 
         let policy = AIDataPolicy.filter(activitySources: appState.activities.map(\.source), privacy: appState.privacy)
@@ -200,19 +211,36 @@ struct CoachView: View {
             do {
                 let answer = try await service.sendChat(request)
                 thread.messages.append(answer)
+                persistThreadLocally()
             } catch {
                 errorMessage = error.localizedDescription
-                let fallback = AIChatMessage(
-                    id: UUID(),
-                    role: .assistant,
-                    text: AISafetyGuards.sanitized("I could not reach PacePilot Coach right now. Keep the adjustment conservative: do not cram missed work, keep easy days easy, and resume from the next planned session."),
-                    createdAt: .now,
-                    usedSources: policy.allowedSources.map(\.rawValue),
-                    excludedSources: policy.excludedSources.map(\.rawValue)
-                )
-                thread.messages.append(fallback)
+                if shouldShowConservativeFallback(for: error) {
+                    let fallback = AIChatMessage(
+                        id: UUID(),
+                        role: .assistant,
+                        text: AISafetyGuards.sanitized("I could not reach PacePilot Coach right now. Keep the adjustment conservative: do not cram missed work, keep easy days easy, and resume from the next planned session."),
+                        createdAt: .now,
+                        usedSources: policy.allowedSources.map(\.rawValue),
+                        excludedSources: policy.excludedSources.map(\.rawValue)
+                    )
+                    thread.messages.append(fallback)
+                    persistThreadLocally()
+                }
             }
             isTyping = false
+        }
+    }
+
+    private func shouldShowConservativeFallback(for error: Error) -> Bool {
+        guard let proxyError = error as? OpenAIProxyError else {
+            return true
+        }
+
+        switch proxyError {
+        case .featureDisabled, .missingConfiguration:
+            return false
+        case .invalidURL, .invalidResponse, .edgeFunction:
+            return true
         }
     }
 
@@ -220,5 +248,75 @@ struct CoachView: View {
         guard let lastUser = thread.messages.last(where: { $0.role == .user }) else { return }
         message = lastUser.text
         send()
+    }
+
+    private func clearChat() {
+        thread = Self.emptyThread()
+        appState.aiThreads.removeAll()
+    }
+
+    private func syncThreadForSession() {
+        if appState.isDemoMode, let previewThread = appState.aiThreads.first {
+            thread = previewThread
+            return
+        }
+
+        if let accountThread = appState.aiThreads.first {
+            thread = accountThread
+            return
+        }
+
+        if !thread.messages.isEmpty {
+            thread = Self.emptyThread()
+        }
+    }
+
+    private func persistThreadLocally() {
+        thread.updatedAt = .now
+        appState.aiThreads.removeAll { $0.id == thread.id }
+        if !thread.messages.isEmpty {
+            appState.aiThreads.insert(thread, at: 0)
+        }
+    }
+
+    private static func emptyThread() -> AIChatThread {
+        AIChatThread(id: UUID(), title: "New chat", messages: [], updatedAt: .now)
+    }
+
+    private func exportChat() {
+        do {
+            guard !thread.messages.isEmpty else {
+                actionResult = CoachActionResult(title: "No chat to export", message: "This coach thread does not contain any messages.")
+                return
+            }
+
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(thread)
+            guard let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                throw CoachActionError.exportFailed
+            }
+
+            let fileURL = directory.appendingPathComponent("pacepilot-coach-chat-\(thread.id.uuidString).json")
+            try data.write(to: fileURL, options: .atomic)
+            actionResult = CoachActionResult(title: "Chat export ready", message: "Saved \(fileURL.lastPathComponent) in the PacePilot documents folder.")
+        } catch {
+            actionResult = CoachActionResult(title: "Chat export unavailable", message: error.localizedDescription)
+        }
+    }
+}
+
+private struct CoachActionResult: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var message: String
+}
+
+private enum CoachActionError: LocalizedError {
+    case exportFailed
+
+    var errorDescription: String? {
+        "PacePilot could not save the chat export on this device."
     }
 }

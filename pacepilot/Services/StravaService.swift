@@ -10,6 +10,7 @@ struct StravaActionResult: Hashable {
     var title: String
     var message: String
     var destinationURL: URL?
+    var succeeded = false
 }
 
 struct StravaService {
@@ -22,35 +23,51 @@ struct StravaService {
         )
     }
 
-    func connect(environment: AppEnvironment) async -> StravaActionResult {
+    func connect(environment: AppEnvironment, supabase: SupabaseService) async -> StravaActionResult {
         do {
-            let payload = try await callEdgeFunction("strava-auth-url", environment: environment, method: "GET")
+            let payload = try await callEdgeFunction("strava-auth-url", environment: environment, supabase: supabase, method: "GET")
             if let value = payload["authorizationUrl"] as? String, let url = URL(string: value) {
                 return StravaActionResult(
                     title: "Open Strava",
                     message: "Continue in Strava to approve PacePilot display sync.",
-                    destinationURL: url
+                    destinationURL: url,
+                    succeeded: true
                 )
             }
-            return StravaActionResult(title: "Strava ready", message: "The auth endpoint responded without an authorization URL.", destinationURL: nil)
+            return StravaActionResult(title: "Strava ready", message: "The auth endpoint responded without an authorization URL.", destinationURL: nil, succeeded: true)
         } catch {
             return StravaActionResult(title: "Strava setup needed", message: error.localizedDescription, destinationURL: nil)
         }
     }
 
-    func disconnect(environment: AppEnvironment) async -> StravaActionResult {
-        await action("strava-disconnect", title: "Strava disconnected", environment: environment)
+    func disconnect(environment: AppEnvironment, supabase: SupabaseService) async -> StravaActionResult {
+        await action(
+            "strava-disconnect",
+            title: "Strava disconnected",
+            environment: environment,
+            supabase: supabase,
+            body: ["clearCache": false, "revoke": true],
+            successMessage: "Strava access was revoked. Cached Strava display data was left in place."
+        )
     }
 
-    func deleteCachedData(environment: AppEnvironment) async -> StravaActionResult {
-        await action("strava-disconnect", title: "Strava cache deleted", environment: environment, body: ["deleteCachedData": true])
+    func disconnectAndDeleteCachedData(environment: AppEnvironment, supabase: SupabaseService) async -> StravaActionResult {
+        await action(
+            "strava-disconnect",
+            title: "Strava disconnected",
+            environment: environment,
+            supabase: supabase,
+            body: ["clearCache": true, "revoke": true],
+            successMessage: "Strava access was revoked and cached Strava display data was cleared."
+        )
     }
 
-    func export(activity: Activity, environment: AppEnvironment) async -> StravaActionResult {
+    func export(activity: Activity, environment: AppEnvironment, supabase: SupabaseService) async -> StravaActionResult {
         await action(
             "strava-export-activity",
             title: "Export requested",
             environment: environment,
+            supabase: supabase,
             body: [
                 "activityId": activity.id.uuidString,
                 "source": activity.source.rawValue,
@@ -64,11 +81,18 @@ struct StravaService {
         _ name: String,
         title: String,
         environment: AppEnvironment,
-        body: [String: Any] = [:]
+        supabase: SupabaseService,
+        body: [String: Any] = [:],
+        successMessage: String? = nil
     ) async -> StravaActionResult {
         do {
-            _ = try await callEdgeFunction(name, environment: environment, method: "POST", body: body)
-            return StravaActionResult(title: title, message: "\(name) completed through Supabase Edge Functions.", destinationURL: nil)
+            _ = try await callEdgeFunction(name, environment: environment, supabase: supabase, method: "POST", body: body)
+            return StravaActionResult(
+                title: title,
+                message: successMessage ?? "\(name) completed through Supabase Edge Functions.",
+                destinationURL: nil,
+                succeeded: true
+            )
         } catch {
             return StravaActionResult(title: "\(title) unavailable", message: error.localizedDescription, destinationURL: nil)
         }
@@ -77,23 +101,25 @@ struct StravaService {
     private func callEdgeFunction(
         _ name: String,
         environment: AppEnvironment,
+        supabase: SupabaseService,
         method: String,
         body: [String: Any] = [:]
     ) async throws -> [String: Any] {
         guard environment.stravaFeatureEnabled else {
             throw StravaServiceError.featureDisabled
         }
-        guard !environment.supabaseURL.isEmpty, !environment.supabaseAnonKey.isEmpty else {
+        guard supabase.isConfigured() else {
             throw StravaServiceError.missingSupabaseConfiguration
         }
-        guard let url = URL(string: "\(environment.supabaseURL)/functions/v1/\(name)") else {
+        let accessToken = try await supabase.authenticatedAccessToken()
+        guard let url = supabase.configuration.edgeFunctionURL(named: name) else {
             throw StravaServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = method
-        request.setValue("Bearer \(environment.supabaseAnonKey)", forHTTPHeaderField: "Authorization")
-        request.setValue(environment.supabaseAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(supabase.configuration.normalizedAnonKey, forHTTPHeaderField: "apikey")
 
         if method != "GET" {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

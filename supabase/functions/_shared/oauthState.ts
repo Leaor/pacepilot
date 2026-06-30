@@ -19,10 +19,10 @@ function base64UrlEncode(bytes: Uint8Array): string {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-function base64UrlDecode(value: string): Uint8Array {
+function base64UrlDecode(value: string): Uint8Array<ArrayBuffer> {
   const padded = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
   const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
 
   for (let index = 0; index < binary.length; index += 1) {
     bytes[index] = binary.charCodeAt(index);

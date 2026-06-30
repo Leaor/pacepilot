@@ -13,7 +13,7 @@ struct OpenAIProxyService {
     var environment: AppEnvironment = .development
 
     func sendChat(_ request: OpenAIProxyRequest) async throws -> AIChatMessage {
-        guard environment.aiFeatureEnabled, !environment.mockAI, supabase.isConfigured() else {
+        if environment.allowsMockAI {
             return AIChatMessage(
                 id: UUID(),
                 role: .assistant,
@@ -24,15 +24,24 @@ struct OpenAIProxyService {
             )
         }
 
-        guard let url = URL(string: "\(supabase.configuration.url)/functions/v1/ai-chat") else {
+        guard environment.aiFeatureEnabled else {
+            throw OpenAIProxyError.featureDisabled
+        }
+
+        guard supabase.isConfigured() else {
+            throw OpenAIProxyError.missingConfiguration
+        }
+
+        guard let url = supabase.configuration.edgeFunctionURL(named: "ai-chat") else {
             throw OpenAIProxyError.invalidURL
         }
+        let accessToken = try await supabase.authenticatedAccessToken()
 
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue(supabase.configuration.anonKey, forHTTPHeaderField: "apikey")
-        urlRequest.setValue("Bearer \(supabase.configuration.anonKey)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue(supabase.configuration.normalizedAnonKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         urlRequest.httpBody = try JSONEncoder().encode(
             EdgeChatRequest(
                 question: request.message,
@@ -104,12 +113,18 @@ private struct EdgeErrorResponse: Decodable {
 }
 
 enum OpenAIProxyError: LocalizedError {
+    case featureDisabled
+    case missingConfiguration
     case invalidURL
     case invalidResponse
     case edgeFunction(String)
 
     var errorDescription: String? {
         switch self {
+        case .featureDisabled:
+            "AI Coach is not enabled for this build."
+        case .missingConfiguration:
+            "Configure Supabase before using online AI Coach."
         case .invalidURL:
             "The configured Supabase URL is invalid."
         case .invalidResponse:

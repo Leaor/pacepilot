@@ -9,19 +9,18 @@ export function authenticatedStub(feature: string, message: string) {
     }
 
     if (req.method !== "POST") {
-      return methodNotAllowed();
+      return methodNotAllowed(req);
     }
 
     try {
-      const user = await getAuthenticatedUser(req);
+      await getAuthenticatedUser(req);
       return jsonResponse({
         feature,
-        userId: user.id,
-        status: "stub",
+        status: "unavailable",
         message
-      });
+      }, 501, req);
     } catch (error) {
-      return safeErrorResponse(error, `${feature} failed`);
+      return safeErrorResponse(error, `${feature} failed`, req);
     }
   };
 }

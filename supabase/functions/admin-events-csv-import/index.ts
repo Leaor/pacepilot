@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return methodNotAllowed();
+    return methodNotAllowed(req);
   }
 
   try {
@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
     const supabase = getServiceClient();
 
     if (!(await isAdmin(supabase, user.id))) {
-      return jsonResponse({ error: "Admin access required" }, 403);
+      return jsonResponse({ error: "Admin access required" }, 403, req);
     }
 
     const body = await readJsonBody<{ csv?: string }>(req, 512_000);
@@ -233,8 +233,8 @@ Deno.serve(async (req) => {
       metadata: { imported: rows.length }
     });
 
-    return jsonResponse({ imported: rows.length });
+    return jsonResponse({ imported: rows.length }, 200, req);
   } catch (error) {
-    return safeErrorResponse(error, "Import failed");
+    return safeErrorResponse(error, "Import failed", req);
   }
 });

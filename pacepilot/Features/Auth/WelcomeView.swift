@@ -28,11 +28,20 @@ struct WelcomeView: View {
                         NavigationLink {
                             OnboardingView()
                         } label: {
-                            Label("Create Plan", systemImage: "sparkles")
+                            Label("Preview Plan Setup", systemImage: "sparkles")
                                 .frame(maxWidth: .infinity)
                                 .minHeight(50)
                         }
                         .buttonStyle(PPLinkButtonStyle(role: .primary))
+
+                        Button {
+                            screen = .createAccount
+                        } label: {
+                            Label("Create Account", systemImage: "person.badge.plus")
+                                .frame(maxWidth: .infinity)
+                                .minHeight(50)
+                        }
+                        .buttonStyle(PPLinkButtonStyle(role: .secondary))
 
                         Button {
                             screen = .signIn
@@ -46,7 +55,7 @@ struct WelcomeView: View {
                         Button {
                             appState.activateDemoMode()
                         } label: {
-                            Label("Try Demo", systemImage: "play.fill")
+                            Label("Preview Sample Plan", systemImage: "play.fill")
                                 .frame(maxWidth: .infinity)
                                 .minHeight(50)
                         }
@@ -56,7 +65,7 @@ struct WelcomeView: View {
 
                     Spacer()
 
-                    Text("Secure accounts, privacy-first coaching, and training data stored in Supabase.")
+                    Text("Secure accounts, privacy-first coaching, and training data that stays under your control.")
                         .font(PPTypography.caption)
                         .foregroundStyle(PPColors.textMuted)
                         .multilineTextAlignment(.center)

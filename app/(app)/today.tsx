@@ -1,6 +1,17 @@
 import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { CalendarPlus, Flame, Gauge, Plus, Route, ShieldCheck } from "lucide-react-native";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import {
+  planAdherenceFromWorkouts,
+  plannedDistanceThisWeek,
+  workoutForToday,
+  type AccountPlan
+} from "@/account/accountPlan";
+import { displayNameFromEmail, getAppRouteMode } from "@/account/routeMode";
+import { useAccountPlan } from "@/account/useAccountPlan";
+import { useAuth } from "@/auth/AuthContext";
 import { ActionButton } from "@/components/ActionButton";
 import { Card } from "@/components/Card";
 import { Pill } from "@/components/Pill";
@@ -24,6 +35,176 @@ const quickAdds = ["Easy Run", "Tempo", "Intervals", "Hills", "Long Run", "Race"
 const weekDays = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function TodayScreen() {
+  const { configured, session } = useAuth();
+  const mode = getAppRouteMode({ configured, hasSession: Boolean(session) });
+
+  return mode === "sample" ? <TodaySampleScreen /> : <TodayAccountScreen session={session} />;
+}
+
+function TodayAccountScreen({ session }: { session: ReturnType<typeof useAuth>["session"] }) {
+  const router = useRouter();
+  const planState = useAccountPlan(session);
+  const email = session?.user.email;
+  const displayName = displayNameFromEmail(email);
+
+  if (planState.loading) {
+    return (
+      <Screen>
+        <SectionHeader title={`Good morning, ${displayName}`} caption="Loading your active training plan." />
+        <Card accent="cyan">
+          <Text muted>Checking your saved PacePilot plan and workouts.</Text>
+        </Card>
+      </Screen>
+    );
+  }
+
+  if (!planState.ok) {
+    return (
+      <Screen>
+        <SectionHeader title={`Good morning, ${displayName}`} caption="Your account is signed in." />
+        <Card accent="red">
+          <Text variant="subheading">Plan unavailable</Text>
+          <Text muted>{planState.message}</Text>
+        </Card>
+      </Screen>
+    );
+  }
+
+  if (planState.plan) {
+    return <TodayAccountPlanScreen displayName={displayName} plan={planState.plan} />;
+  }
+
+  return (
+    <Screen>
+      <SectionHeader title={`Good morning, ${displayName}`} caption="Your account is ready. Create a plan or record a run to populate Today." />
+      <Card accent="orange">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">No workout scheduled</Text>
+          <CalendarPlus color={colors.orange} size={22} />
+        </View>
+        <Text muted>
+          PacePilot is not using sample mileage for this signed-in account. Generate a plan from your current training
+          context before starting a workout.
+        </Text>
+        <View style={styles.actionRow}>
+          <ActionButton label="Create plan" icon={<Route color={colors.text} size={18} />} onPress={() => router.push("/onboarding")} />
+          <ActionButton label="Record run" icon={<Plus color={colors.text} size={18} />} variant="secondary" onPress={() => router.push("/activities")} />
+        </View>
+      </Card>
+
+      <Card accent="green">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">This week</Text>
+          <Gauge color={colors.green} size={22} />
+        </View>
+        <View style={styles.metricGrid}>
+          <View style={styles.metricBox}>
+            <Text variant="heading">0</Text>
+            <Text muted>km logged</Text>
+          </View>
+          <View style={styles.metricBox}>
+            <Text variant="heading">0%</Text>
+            <Text muted>Plan adherence</Text>
+          </View>
+          <View style={styles.metricBox}>
+            <Text variant="heading">--</Text>
+            <Text muted>Readiness</Text>
+          </View>
+        </View>
+      </Card>
+
+      <Card accent="cyan">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">Data boundary</Text>
+          <ShieldCheck color={colors.cyan} size={22} />
+        </View>
+        <Text muted>
+          Signed-in accounts start empty and private. Connected-service data and AI context stay off until you opt in
+          from Privacy Center.
+        </Text>
+        <Link href="/privacy" style={styles.inlineLink}>
+          Review privacy controls
+        </Link>
+      </Card>
+
+      <Card accent="purple">
+        <Text variant="subheading">Quick Add</Text>
+        <Text muted>Quick logging will become available after account activity persistence is connected.</Text>
+        <View style={styles.quickGrid}>
+          {quickAdds.slice(0, 4).map((item) => (
+            <Pill key={item} label={item} tone="purple" />
+          ))}
+        </View>
+      </Card>
+    </Screen>
+  );
+}
+
+function TodayAccountPlanScreen({ displayName, plan }: { displayName: string; plan: AccountPlan }) {
+  const router = useRouter();
+  const workout = workoutForToday(plan.workouts);
+  const plannedKm = plannedDistanceThisWeek(plan.workouts);
+  const adherence = planAdherenceFromWorkouts(plan.workouts);
+
+  return (
+    <Screen>
+      <SectionHeader title={`Good morning, ${displayName}`} caption={plan.name} />
+      <Card accent={workout?.intensity === "hard" ? "orange" : "green"}>
+        <View style={styles.headerRow}>
+          <Pill label={workout ? workout.title : "No workout scheduled"} tone={workout?.intensity === "hard" ? "orange" : "green"} />
+          <Text muted>{workout?.scheduledDate ?? "Today"}</Text>
+        </View>
+        <Text variant="title">{workout?.distanceKm ? `${workout.distanceKm} km` : workout?.durationMinutes ? `${workout.durationMinutes} min` : "--"}</Text>
+        <Text muted>{workout?.notes ?? "Your active plan has no workout scheduled yet."}</Text>
+        <View style={styles.metricRow}>
+          {workout?.targetPace ? <Pill label={workout.targetPace} tone="cyan" /> : null}
+          {workout ? <Pill label={workout.status.replace("_", " ")} tone="purple" /> : null}
+          {workout ? <Pill label={workout.intensity} tone={workout.intensity === "hard" ? "orange" : "green"} /> : null}
+        </View>
+        <View style={styles.actionRow}>
+          <ActionButton label="View plan" icon={<Route color={colors.text} size={18} />} onPress={() => router.push("/plan")} />
+          <ActionButton label="Record run" icon={<Plus color={colors.text} size={18} />} variant="secondary" onPress={() => router.push("/activities")} />
+        </View>
+      </Card>
+
+      <Card accent="green">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">This week</Text>
+          <Gauge color={colors.green} size={22} />
+        </View>
+        <View style={styles.metricGrid}>
+          <View style={styles.metricBox}>
+            <Text variant="heading">{plannedKm}</Text>
+            <Text muted>km planned</Text>
+          </View>
+          <View style={styles.metricBox}>
+            <Text variant="heading">{adherence}%</Text>
+            <Text muted>Plan adherence</Text>
+          </View>
+          <View style={styles.metricBox}>
+            <Text variant="heading">{plan.workouts.length}</Text>
+            <Text muted>Workouts</Text>
+          </View>
+        </View>
+      </Card>
+
+      <Card accent="cyan">
+        <View style={styles.headerRow}>
+          <Text variant="subheading">Data boundary</Text>
+          <ShieldCheck color={colors.cyan} size={22} />
+        </View>
+        <Text muted>Today is based on your saved PacePilot plan. Connected-service data and AI context remain opt-in.</Text>
+        <Link href="/privacy" style={styles.inlineLink}>
+          Review privacy controls
+        </Link>
+      </Card>
+    </Screen>
+  );
+}
+
+function TodaySampleScreen() {
+  const router = useRouter();
+  const [notice, setNotice] = useState<string | null>(null);
   const generatedPlan = generateTrainingPlan({
     goalDistance: "half",
     raceDate: "2026-10-18",
@@ -93,9 +274,15 @@ export default function TodayScreen() {
           <Pill label={readiness.action.replace("_", " ")} tone="green" />
         </View>
         <View style={styles.actionRow}>
-          <ActionButton label="Start workout" icon={<Flame color={colors.text} size={18} />} />
-          <ActionButton label="" icon={<Plus color={colors.text} size={18} />} variant="secondary" />
+          <ActionButton label="Start workout" icon={<Flame color={colors.text} size={18} />} onPress={() => router.push("/activities")} />
+          <ActionButton
+            label="Quick add"
+            icon={<Plus color={colors.text} size={18} />}
+            variant="secondary"
+            onPress={() => setNotice("Manual run entry is ready from the Activities screen.")}
+          />
         </View>
+        {notice ? <Text muted>{notice}</Text> : null}
         <Text muted>{readiness.reason}</Text>
       </Card>
 

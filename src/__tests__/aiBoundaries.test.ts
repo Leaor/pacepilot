@@ -3,7 +3,7 @@ import { filterAiContext, assertNoStravaData } from "@/ai/dataBoundaries";
 import { buildAiPromptPayload } from "@/ai/promptBuilder";
 import { evaluateAiCoachGate } from "@/ai/gating";
 import { canSpendAiRequest, usageFallbackMessage } from "@/ai/usageLimits";
-import { demoActivities, demoCheckIn } from "@/data/demo";
+import { demoActivities, demoCheckIn, demoCoachMemory } from "@/data/demo";
 import { defaultPrivacyPreferences } from "@/privacy/defaults";
 
 const enabledPreferences = {
@@ -43,6 +43,44 @@ describe("AI boundaries", () => {
     expect(context.activities).toHaveLength(0);
     expect(context.checkIns).toHaveLength(0);
     expect(context.profile).toBeUndefined();
+  });
+
+  it("does not include sensitive context groups without their specific consent", () => {
+    const context = filterAiContext(
+      {
+        activities: demoActivities,
+        checkIns: [demoCheckIn],
+        profile: { goal: "Half marathon" },
+        raceResults: [{ outcome: "pacing_issue" }],
+        planHistory: [{ change: "load capped" }],
+        coachMemory: demoCoachMemory
+      },
+      {
+        ...defaultPrivacyPreferences,
+        aiCoachEnabled: true
+      }
+    );
+
+    expect(context.activities).toHaveLength(0);
+    expect(context.checkIns).toHaveLength(0);
+    expect(context.profile).toBeUndefined();
+    expect(context.raceResults).toHaveLength(0);
+    expect(context.planHistory).toHaveLength(0);
+    expect(context.coachMemory).toHaveLength(0);
+    expect(context.dataCategoriesUsed).toHaveLength(0);
+  });
+
+  it("rejects nested Strava tokens and protected source labels", () => {
+    const context = filterAiContext(
+      {
+        activities: demoActivities,
+        checkIns: [demoCheckIn],
+        profile: { strava_access_token: "secret" }
+      },
+      enabledPreferences
+    );
+
+    expect(() => assertNoStravaData(context)).toThrow("Strava");
   });
 
   it("requires Pro or Elite and user opt-in for AI Coach", () => {

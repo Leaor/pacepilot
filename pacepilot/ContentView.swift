@@ -13,6 +13,10 @@ struct ContentView: View {
         }
         .animation(.smooth(duration: 0.28), value: appState.isAuthenticated)
         .animation(.smooth(duration: 0.28), value: appState.isDemoMode)
+        .sheet(isPresented: $appState.pendingPasswordUpdate) {
+            PasswordResetCompletionView()
+                .environmentObject(appState)
+        }
     }
 }
 
